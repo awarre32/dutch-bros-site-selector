@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dutch Bros Site Selection - The Carolinas</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a}
+#map{width:100%;height:100vh}
+.panel{position:absolute;top:10px;left:10px;z-index:1000;background:#fff;border:1px solid #dee2e6;border-radius:12px;width:400px;max-height:calc(100vh - 20px);overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.panel-header{padding:16px 18px;border-bottom:1px solid #dee2e6;background:linear-gradient(135deg,#1e56a0,#2563eb);border-radius:12px 12px 0 0;position:sticky;top:0;z-index:10}
+.panel-header h1{font-size:16px;font-weight:700;color:#fff;margin-bottom:3px}
+.panel-header p{font-size:11px;color:rgba(255,255,255,.9)}
+.section{padding:12px 16px;border-bottom:1px solid #e9ecef}
+.section h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#6c757d;margin-bottom:8px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px}
+.stat-card{background:#f8f9fa;border-radius:6px;padding:8px 4px;text-align:center;border:1px solid #e9ecef}
+.stat-card .num{font-size:18px;font-weight:700;color:#1e56a0}
+.stat-card .label{font-size:9px;color:#6c757d;margin-top:1px}
+.filter-btn{display:inline-block;padding:4px 9px;font-size:11px;border:1px solid #dee2e6;border-radius:5px;cursor:pointer;background:#f8f9fa;color:#495057;margin:2px;transition:all .2s}
+.filter-btn:hover{border-color:#1e56a0;color:#1a1a1a}
+.filter-btn.active{background:#1e56a0;border-color:#1e56a0;color:#fff}
+.market-btn{padding:5px 9px;border-radius:5px;border:1px solid #dee2e6;background:#f8f9fa;color:#495057;cursor:pointer;font-size:11px;font-weight:500;transition:all .2s;text-align:center}
+.market-btn:hover{border-color:#1e56a0;color:#1a1a1a}
+.market-btn.active{background:#1e56a0;border-color:#1e56a0;color:#fff}
+.controls-row{display:flex;gap:5px;flex-wrap:wrap}
+.search-box{width:100%;padding:7px 10px;background:#fff;border:1px solid #dee2e6;border-radius:5px;color:#1a1a1a;font-size:12px;outline:none;margin-bottom:6px}
+.search-box::placeholder{color:#6c757d}
+.search-box:focus{border-color:#1e56a0}
+.location-list{max-height:300px;overflow-y:auto}
+.loc-item{padding:6px 0;border-bottom:1px solid #e9ecef;font-size:11px;cursor:pointer;transition:background .15s}
+.loc-item:hover{background:#f8f9fa;margin:0 -16px;padding:6px 16px}
+.loc-item .loc-name{font-weight:600;color:#1a1a1a}
+.loc-item .loc-addr{color:#6c757d;margin-top:1px;font-size:10px}
+.loc-item .loc-meta{font-size:10px;margin-top:2px;color:#6c757d}
+.loc-item .loc-meta span{margin-right:8px}
+.loc-item .loc-link{font-size:10px;color:#1e56a0;text-decoration:none;margin-top:2px;display:inline-block}
+.loc-item .loc-link:hover{text-decoration:underline}
+.status-open{color:#198754} .status-conversion{color:#fd7e14} .status-planned{color:#6f42c1} .status-site{color:#e8590c} .status-ai-site{color:#1e56a0} .status-opportunity{color:#dc3545}
+.gm-info-window b{color:#1e56a0}
+.gm-info-window .tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:4px}
+.tag-vpd{background:#d1e7dd;color:#198754} .tag-acres{background:#fff3cd;color:#856404} .tag-anchor{background:#cfe2ff;color:#1e56a0} .tag-price{background:#e2d9f3;color:#6f42c1}
+.panel::-webkit-scrollbar,.location-list::-webkit-scrollbar,.screener-body::-webkit-scrollbar{width:5px}
+.panel::-webkit-scrollbar-track,.location-list::-webkit-scrollbar-track,.screener-body::-webkit-scrollbar-track{background:#f8f9fa}
+.panel::-webkit-scrollbar-thumb,.location-list::-webkit-scrollbar-thumb,.screener-body::-webkit-scrollbar-thumb{background:#ced4da;border-radius:3px}
+.specs-bar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.spec-chip{padding:3px 7px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;font-size:9px;color:#6c757d}
+.spec-chip b{color:#1e56a0}
+/* Tabs */
+.tab-bar{display:flex;border-bottom:1px solid #dee2e6;position:sticky;top:62px;z-index:9;background:#fff}
+.tab-btn{flex:1;padding:10px 8px;font-size:11px;font-weight:600;text-align:center;cursor:pointer;color:#6c757d;background:transparent;border:none;border-bottom:2px solid transparent;transition:all .2s}
+.tab-btn:hover{color:#1a1a1a}
+.tab-btn.active{color:#1e56a0;border-bottom-color:#1e56a0;background:#f8f9fa}
+.tab-content{display:none}
+.tab-content.active{display:block}
+/* Screener */
+.screener-body{padding:12px 16px;max-height:calc(100vh - 150px);overflow-y:auto}
+.screener-section{margin-bottom:16px}
+.screener-section h3{font-size:12px;font-weight:700;margin-bottom:8px;padding:6px 10px;border-radius:5px}
+.section-a h3{background:#d1e7dd;color:#198754;border:1px solid #badbcc}
+.section-b h3{background:#cfe2ff;color:#1e56a0;border:1px solid #9ec5fe}
+.section-c h3{background:#e2d9f3;color:#6f42c1;border:1px solid #c9b8e0}
+.screener-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e9ecef;font-size:11px}
+.screener-row label{flex:1;color:#495057;min-width:0}
+.screener-row input,.screener-row select{background:#fff;border:1px solid #dee2e6;border-radius:4px;color:#1a1a1a;padding:4px 8px;font-size:11px;width:120px;outline:none}
+.screener-row input:focus,.screener-row select:focus{border-color:#1e56a0}
+.pass-badge{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;min-width:45px;text-align:center}
+.pass-yes{background:#d1e7dd;color:#198754}
+.pass-no{background:#f8d7da;color:#dc3545}
+.pass-na{background:#f8f9fa;color:#6c757d}
+.score-badge{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;min-width:35px;text-align:center;background:#cfe2ff;color:#1e56a0}
+.screener-result{background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:14px;margin-top:10px}
+.screener-result h3{font-size:13px;margin-bottom:10px;color:#1a1a1a}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.result-item{padding:8px;background:#fff;border-radius:5px;border:1px solid #dee2e6}
+.result-item .r-label{font-size:9px;color:#6c757d;text-transform:uppercase;letter-spacing:.5px}
+.result-item .r-value{font-size:16px;font-weight:700;margin-top:2px}
+.r-green{color:#198754}.r-red{color:#dc3545}.r-blue{color:#1e56a0}.r-purple{color:#6f42c1}.r-yellow{color:#fd7e14}
+.screener-verdict{text-align:center;padding:12px;border-radius:8px;margin-top:10px;font-weight:700;font-size:14px}
+.verdict-go{background:#d1e7dd;color:#198754;border:1px solid #badbcc}
+.verdict-maybe{background:#fff3cd;color:#856404;border:1px solid #ffecb5}
+.verdict-nogo{background:#f8d7da;color:#dc3545;border:1px solid #f5c2c7}
+.btn-screen{width:100%;padding:10px;background:linear-gradient(135deg,#1e56a0,#2563eb);border:none;border-radius:6px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;margin-top:8px;transition:opacity .2s}
+.btn-screen:hover{opacity:.9}
+.btn-reset{width:100%;padding:8px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;color:#6c757d;font-size:11px;cursor:pointer;margin-top:4px;transition:all .2s}
+.btn-reset:hover{border-color:#1e56a0;color:#1a1a1a}
+/* Improvements panel */
+.improve-item{padding:10px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;margin-bottom:6px;font-size:11px}
+.improve-item h4{color:#1e56a0;font-size:11px;margin-bottom:4px}
+.improve-item p{color:#6c757d;line-height:1.5}
+.improve-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;margin-right:4px;margin-bottom:4px}
+.improve-high{background:#f8d7da;color:#dc3545}.improve-med{background:#fff3cd;color:#856404}.improve-low{background:#cfe2ff;color:#1e56a0}
+@media(max-width:768px){.panel{width:calc(100% - 20px);max-height:45vh;bottom:10px;top:auto}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="panel">
+  <div class="panel-header">
+    <h1>Dutch Bros Site Selection</h1>
+    <p>NC & SC &bull; Screener-Qualified Sites &bull; March 2026</p>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('map')">Map & Locations</button>
+    <button class="tab-btn" onclick="switchTab('screener')">Site Screener</button>
+    <button class="tab-btn" onclick="switchTab('improve')">Suggestions</button>
+  </div>
+
+  <!-- ═══ TAB 1: MAP ═══ -->
+  <div class="tab-content active" id="tab-map">
+    <div class="section">
+      <h2>Dutch Bros Site Requirements</h2>
+      <div class="specs-bar">
+        <span class="spec-chip"><b>0.50-0.75</b> ac min</span>
+        <span class="spec-chip"><b>25K+</b> VPD</span>
+        <span class="spec-chip"><b>Hard corner</b> / outparcel</span>
+        <span class="spec-chip"><b>2+</b> access pts</span>
+        <span class="spec-chip"><b>Signalized</b> intersection</span>
+        <span class="spec-chip"><b>&lt;$700K</b> land (SE)</span>
+        <span class="spec-chip"><b>6.5%+</b> YOC target</span>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Market View</h2>
+      <div class="controls-row">
+        <button class="market-btn active" onclick="flyTo('all',this)">All</button>
+        <button class="market-btn" onclick="flyTo('clt',this)">CLT</button>
+        <button class="market-btn" onclick="flyTo('rdu',this)">RDU</button>
+        <button class="market-btn" onclick="flyTo('triad',this)">Triad</button>
+        <button class="market-btn" onclick="flyTo('chs',this)">CHS</button>
+        <button class="market-btn" onclick="flyTo('gsp',this)">GSP</button>
+        <button class="market-btn" onclick="flyTo('col',this)">COL</button>
+        <button class="market-btn" onclick="flyTo('coast',this)">Coast</button>
+        <button class="market-btn" onclick="flyTo('wnc',this)">WNC</button>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Summary</h2>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="num" id="s-open">0</div><div class="label">Open</div></div>
+        <div class="stat-card"><div class="num" id="s-conv">0</div><div class="label">Converting</div></div>
+        <div class="stat-card"><div class="num" id="s-plan">0</div><div class="label">Planned</div></div>
+        <div class="stat-card"><div class="num" id="s-site">0</div><div class="label">Target Sites</div></div>
+        <div class="stat-card"><div class="num" id="s-ai">0</div><div class="label">AI Qualified</div></div>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Filters</h2>
+      <div>
+        <button class="filter-btn active" data-filter="all" onclick="toggleFilter('all')">All</button>
+        <button class="filter-btn" data-filter="open" onclick="toggleFilter('open')"><span style="color:#3fb950">&#9679;</span> Open</button>
+        <button class="filter-btn" data-filter="conversion" onclick="toggleFilter('conversion')"><span style="color:#d29922">&#9679;</span> Converting</button>
+        <button class="filter-btn" data-filter="planned" onclick="toggleFilter('planned')"><span style="color:#a371f7">&#9679;</span> Planned</button>
+        <button class="filter-btn" data-filter="site" onclick="toggleFilter('site')"><span style="color:#f0883e">&#9679;</span> Target Sites</button>
+        <button class="filter-btn" data-filter="ai-site" onclick="toggleFilter('ai-site')"><span style="color:#58a6ff">&#9679;</span> AI Qualified</button>
+      </div>
+      <div class="section" id="ai-scrape-meta" style="display:none">
+        <h2>AI pipeline</h2>
+        <p id="last-scraped" style="font-size:11px;color:#6c757d"></p>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Locations</h2>
+      <input type="text" id="loc-search" class="search-box" placeholder="Search by name, city, address, or place..." oninput="searchLocs(this.value)">
+      <div class="location-list" id="loc-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 2: SITE SCREENER ═══ -->
+  <div class="tab-content" id="tab-screener">
+    <div class="screener-body">
+      <div style="font-size:11px;color:#6c757d;margin-bottom:12px">Input site details below. Mirrors Dutch Bros NNN Land Screener Sections A, B, and C.</div>
+
+      <!-- Section A: Hard Go / No-Go -->
+      <div class="screener-section section-a">
+        <h3>SECTION A &mdash; Hard Go / No-Go (8 Criteria)</h3>
+        <div class="screener-row"><label>Site Area (acres)</label><input type="number" id="sa-area" step="0.01" placeholder="e.g. 0.65"><span class="pass-badge pass-na" id="sa-area-p">--</span></div>
+        <div class="screener-row"><label>Drive-Thru Stack (cars)</label><input type="number" id="sa-stack" placeholder="e.g. 20"><span class="pass-badge pass-na" id="sa-stack-p">--</span></div>
+        <div class="screener-row"><label>VPD (vehicles/day)</label><input type="number" id="sa-vpd" placeholder="e.g. 35000"><span class="pass-badge pass-na" id="sa-vpd-p">--</span></div>
+        <div class="screener-row"><label>Frontage & Visibility</label><select id="sa-front"><option value="">Select</option><option value="1">Excellent</option><option value="1">Good</option><option value="0">Poor / No Frontage</option></select><span class="pass-badge pass-na" id="sa-front-p">--</span></div>
+        <div class="screener-row"><label>Ingress / Egress (access pts)</label><input type="number" id="sa-access" placeholder="e.g. 2"><span class="pass-badge pass-na" id="sa-access-p">--</span></div>
+        <div class="screener-row"><label>Corner / Outparcel Position</label><select id="sa-corner"><option value="">Select</option><option value="1">Hard Corner</option><option value="1">Outparcel</option><option value="0">Inline / Mid-Block</option></select><span class="pass-badge pass-na" id="sa-corner-p">--</span></div>
+        <div class="screener-row"><label>Drive-Thru Zoning</label><select id="sa-zoning"><option value="">Select</option><option value="1">Permitted by Right</option><option value="1">Conditional / SUP Available</option><option value="0">Not Permitted</option></select><span class="pass-badge pass-na" id="sa-zoning-p">--</span></div>
+        <div class="screener-row"><label>Utilities on Site</label><select id="sa-util"><option value="">Select</option><option value="1">All Available</option><option value="1">Partial (Can Extend)</option><option value="0">None / Major Extension</option></select><span class="pass-badge pass-na" id="sa-util-p">--</span></div>
+        <div style="text-align:right;margin-top:6px;font-size:11px;font-weight:700"><span id="sa-score" style="color:#6c757d">-- / 8 PASS</span></div>
+      </div>
+
+      <!-- Section B: Scored Market Criteria -->
+      <div class="screener-section section-b">
+        <h3>SECTION B &mdash; Market / Demo Score (8 Criteria, 1-5 each)</h3>
+        <div class="screener-row"><label>1mi Pop Density (per sq mi)</label><input type="number" id="sb-pop" placeholder="e.g. 4500"><span class="score-badge" id="sb-pop-s">--</span></div>
+        <div class="screener-row"><label>3mi Median HH Income ($)</label><input type="number" id="sb-income" placeholder="e.g. 85000"><span class="score-badge" id="sb-income-s">--</span></div>
+        <div class="screener-row"><label>5yr Pop Growth Trend (%)</label><input type="number" id="sb-growth" step="0.1" placeholder="e.g. 12.5"><span class="score-badge" id="sb-growth-s">--</span></div>
+        <div class="screener-row"><label>Daytime Workers (3mi)</label><input type="number" id="sb-workers" placeholder="e.g. 25000"><span class="score-badge" id="sb-workers-s">--</span></div>
+        <div class="screener-row"><label>Commuter Corridor</label><select id="sb-commute"><option value="">Select</option><option value="5">Major AM/PM commuter route</option><option value="4">Moderate commuter use</option><option value="3">Some commuter traffic</option><option value="2">Residential only</option><option value="1">Low traffic</option></select><span class="score-badge" id="sb-commute-s">--</span></div>
+        <div class="screener-row"><label>Co-Tenancy / Anchors</label><select id="sb-cotenancy"><option value="">Select</option><option value="5">National grocer + big box</option><option value="4">National grocer or big box</option><option value="3">Regional grocer / retail</option><option value="2">Neighborhood retail only</option><option value="1">Sparse / no co-tenancy</option></select><span class="score-badge" id="sb-cotenancy-s">--</span></div>
+        <div class="screener-row"><label>Competitive Coffee Density (3mi)</label><select id="sb-compete"><option value="">Select</option><option value="5">0-1 competitors</option><option value="4">2-3 competitors</option><option value="3">4-5 competitors</option><option value="2">6-8 competitors</option><option value="1">9+ competitors</option></select><span class="score-badge" id="sb-compete-s">--</span></div>
+        <div class="screener-row"><label>Nearest DB Proximity (mi)</label><input type="number" id="sb-dbprox" step="0.1" placeholder="e.g. 5.0"><span class="score-badge" id="sb-dbprox-s">--</span></div>
+        <div style="text-align:right;margin-top:6px;font-size:11px;font-weight:700"><span id="sb-score" style="color:#58a6ff">-- / 40 Points</span></div>
+      </div>
+
+      <!-- Section C: Financial Pre-Screen -->
+      <div class="screener-section section-c">
+        <h3>SECTION C &mdash; Financial Pre-Screen</h3>
+        <div class="screener-row"><label>Land Price ($)</label><input type="number" id="sc-land" placeholder="e.g. 450000"></div>
+        <div class="screener-row"><label>Hard Costs ($)</label><input type="number" id="sc-hard" placeholder="e.g. 934500" value="934500"></div>
+        <div class="screener-row"><label>Soft Cost % of Hard</label><input type="number" id="sc-softpct" step="0.1" placeholder="11" value="11"></div>
+        <div class="screener-row"><label>Annual Rent (NNN $)</label><input type="number" id="sc-rent" placeholder="e.g. 125000"></div>
+        <div class="screener-row"><label>Rent Escalation %/5yr</label><input type="number" id="sc-esc" step="0.1" value="10"></div>
+        <div class="screener-row"><label>Exit Cap Rate (%)</label><input type="number" id="sc-exitcap" step="0.01" placeholder="e.g. 5.25" value="5.25"></div>
+        <div class="screener-row"><label>Lease Term (yrs)</label><input type="number" id="sc-term" value="15"></div>
+        <div class="screener-row"><label>LTV (%)</label><input type="number" id="sc-ltv" step="1" value="65"></div>
+        <div class="screener-row"><label>Interest Rate (%)</label><input type="number" id="sc-rate" step="0.01" value="6.50"></div>
+        <div class="screener-row"><label>Amortization (yrs)</label><input type="number" id="sc-amort" value="25"></div>
+      </div>
+
+      <button class="btn-screen" onclick="runScreener()">Run Full Screening</button>
+      <button class="btn-reset" onclick="resetScreener()">Reset All Fields</button>
+
+      <div id="screener-results" style="display:none">
+        <div class="screener-result">
+          <h3>Screening Results</h3>
+          <div class="result-grid">
+            <div class="result-item"><div class="r-label">Total Dev Cost</div><div class="r-value r-blue" id="r-totalcost">--</div></div>
+            <div class="result-item"><div class="r-label">Year 1 NOI</div><div class="r-value r-green" id="r-noi">--</div></div>
+            <div class="result-item"><div class="r-label">Yield on Cost</div><div class="r-value r-green" id="r-yoc">--</div></div>
+            <div class="result-item"><div class="r-label">Exit Value (Yr 15)</div><div class="r-value r-purple" id="r-exitval">--</div></div>
+            <div class="result-item"><div class="r-label">Dev Profit</div><div class="r-value r-green" id="r-profit">--</div></div>
+            <div class="result-item"><div class="r-label">Return on Cost</div><div class="r-value r-blue" id="r-roc">--</div></div>
+            <div class="result-item"><div class="r-label">Annual Debt Service</div><div class="r-value r-yellow" id="r-ds">--</div></div>
+            <div class="result-item"><div class="r-label">DSCR</div><div class="r-value r-blue" id="r-dscr">--</div></div>
+          </div>
+        </div>
+        <div id="screener-verdict" class="screener-verdict" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB 3: SUGGESTIONS ═══ -->
+  <div class="tab-content" id="tab-improve">
+    <div class="screener-body">
+      <div style="font-size:11px;color:#6c757d;margin-bottom:12px">Actionable suggestions to strengthen site selection pipeline.</div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-high">High Priority</span>
+        <h4>Verify VPD with NCDOT/SCDOT AADT Data</h4>
+        <p>Several target sites use approximate or broker-reported traffic counts. Cross-reference every VPD figure with official NCDOT AADT portal (connect.ncdot.gov/resources/State-Mapping) and SCDOT traffic count maps before submitting LOIs.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-high">High Priority</span>
+        <h4>Engage CRE Brokers for Off-Market Pipeline</h4>
+        <p>Highest-value CLT sites (Johnston Rd/I-485, Carowinds Blvd) require off-market broker outreach. Contact Cole CRE, Shook-Tarlton (CLT), NAI Southern (Matthews), CBRE/Colliers (MB coast). Build broker LOI packet with Dutch Bros brand deck + site specs.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-high">High Priority</span>
+        <h4>Prioritize Sites with Existing Drive-Thru Entitlements</h4>
+        <p>Dark Arby's (Concord), former restaurant pads, and sites with explicit DT zoning save 3-6 months of entitlement timeline. These should be at the top of your LOI queue since Dutch Bros requires drive-thru by right or conditional use.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-med">Medium</span>
+        <h4>Add Demographic Heatmap Layer</h4>
+        <p>Overlay Census tract-level data for median HH income, population density, and 18-34 age cohort. Dutch Bros indexes heavily on younger demographics. ESRI/ArcGIS or SimpleMaps data can be integrated into Google Maps as choropleth layers.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-med">Medium</span>
+        <h4>Track Competitor Locations (Starbucks, Dunkin, 7Brew)</h4>
+        <p>Map all Starbucks, Dunkin', and 7Brew locations within 3mi of each target site. High Starbucks density validates coffee demand; 7Brew is the closest competitor for drive-thru format. This helps score Section B "competitive density" accurately.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-med">Medium</span>
+        <h4>Monitor Conway/MB SC-501 Widening Timeline</h4>
+        <p>The US-501 widening from 4 to 6 lanes between Conway and Myrtle Beach will dramatically improve access to the Conway Coastal Marketplace site. Track SCDOT construction timeline - construction access impacts may affect near-term lease-up.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-low">Low</span>
+        <h4>Build Comps Database Integration</h4>
+        <p>Your screener workbook has 20 NNN comps with cap rates 4.75-5.50%. Integrate this data to auto-populate exit cap assumptions by metro. Current Dutch Bros avg: Tampa 4.875%, Orlando 5.19%, GSP 5.25%. Charlotte has no DB comps yet - use coffee-adjacent 5.50-6.00%.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-low">Low</span>
+        <h4>Add Site Visit Checklist Export</h4>
+        <p>Generate a printable PDF checklist for each target site covering: photo documentation, stack measurement (pace off 220ft for 16-car queue), utility vault check, adjacent business hours, morning rush observation (6-9am), and competitor drive-thru wait times.</p>
+      </div>
+
+      <div class="improve-item">
+        <span class="improve-tag improve-low">Low</span>
+        <h4>Integrate Real-Time LoopNet/Crexi Alerts</h4>
+        <p>Set saved searches on LoopNet and Crexi for: "retail land for sale" in each target metro, 0.40-2.0 acres, with "drive-thru" or "outparcel" keywords. These listings turn over fast - automated alerts catch new inventory before competitors.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ TAB SWITCHING ═══
+function switchTab(t){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{b.classList.toggle('active',['map','screener','improve'][i]===t)});
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+}
+
+var map;
+var gMarkers=[],gCircles=[];
+var infoWindow;
+var MAP_KEY='AIzaSyAxTRVlG-NJX2ARX0UprNoh2MqcKUjhuWw';
+
+const locations=[];
+const L_=loc=>locations.push(loc);
+
+// ═══ OPEN ═══
+L_({n:"Dutch Bros Morrisville",a:"971 Morrisville Pkwy, Morrisville, NC 27560",lat:35.8394,lng:-78.8386,s:"open",m:"rdu",vpd:null,acres:null,anchor:null,price:null,d:"First Dutch Bros in NC. Open at Park West Village. Drive-thru.",url:null});
+L_({n:"Dutch Bros Summerville",a:"101 Angus Dr, Summerville, SC 29483",lat:33.0185,lng:-80.1756,s:"open",m:"chs",vpd:null,acres:null,anchor:null,price:null,d:"First Dutch Bros in SC. Opened summer 2025.",url:null});
+L_({n:"Dutch Bros Greenville",a:"3103 N Pleasantburg Dr, Greenville, SC 29609",lat:34.8780,lng:-82.3630,s:"open",m:"gsp",vpd:null,acres:null,anchor:null,price:null,d:"Open. Listed on LoopNet at $2.92M / 5.35% cap. Corporate guaranteed 15yr NNN.",url:"https://www.loopnet.com/Listing/3103-N-Pleasantburg-Dr-Greenville-SC/37794577/"});
+L_({n:"Dutch Bros N. Charleston",a:"5187 Ashley Phosphate Rd, Charleston, SC 29418",lat:32.9290,lng:-80.0700,s:"open",m:"chs",vpd:null,acres:0.62,anchor:null,price:null,d:"Open. Listed at $3.14M / 5.15% cap. 15yr abs NNN. Corporate tenant (NYSE: BROS).",url:"https://www.loopnet.com/Listing/5187-Ashley-Phosphate-Rd-North-Charleston-SC/38392328/"});
+
+// ═══ PLANNED / UNDER CONSTRUCTION ═══
+L_({n:"Dutch Bros Mauldin",a:"201 S Main St, Mauldin, SC 29662",lat:34.7780,lng:-82.3060,s:"planned",m:"gsp",vpd:null,acres:0.58,anchor:null,price:null,d:"Under construction. Listed at $2.82M / 5.15% cap. Corporate guaranty. Greenville suburb.",url:null});
+L_({n:"Dutch Bros Ladson",a:"3678 Ladson Rd, Ladson, SC",lat:32.9860,lng:-80.1080,s:"planned",m:"chs",vpd:null,acres:null,anchor:null,price:null,d:"Under construction. Charleston metro suburb near I-26.",url:null});
+L_({n:"Dutch Bros Columbia",a:"7001 Garners Ferry Rd, Columbia, SC",lat:33.9760,lng:-80.9250,s:"planned",m:"col",vpd:null,acres:null,anchor:null,price:null,d:"Under construction. Listed at $3.17M / 5.35% cap. Garners Ferry Rd corridor.",url:"https://www.loopnet.com/Listing/7001-Garners-Ferry-Rd-Columbia-SC/30571618/"});
+L_({n:"Dutch Bros North Augusta",a:"Edgewood Square, North Augusta, SC",lat:33.5200,lng:-81.9650,s:"planned",m:"col",vpd:null,acres:null,anchor:null,price:null,d:"Announced for Edgewood Square. Augusta GA metro / SC border.",url:null});
+L_({n:"Dutch Bros Clemson",a:"118 Pinnacle St, Clemson, SC",lat:34.6834,lng:-82.8374,s:"planned",m:"gsp",vpd:null,acres:null,anchor:null,price:null,d:"Under construction. Clemson University 27K+ students. College town.",url:null});
+L_({n:"Dutch Bros Charlotte",a:"5637 Albemarle Rd, Charlotte, NC",lat:35.1838,lng:-80.7510,s:"planned",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"First new-build in Charlotte. Former Wells Fargo drive-thru conversion.",url:null});
+
+// ═══ CLUTCH CONVERSIONS - NC ═══
+L_({n:"ex-Clutch Mooresville",a:"154 W Plaza Dr, Mooresville, NC 28117",lat:35.5862,lng:-80.8240,s:"conversion",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"Former Clutch Coffee. Lake Norman market.",url:null});
+L_({n:"ex-Clutch Mooresville #2",a:"356 Williamson Rd, Mooresville, NC 28117",lat:35.5750,lng:-80.8100,s:"conversion",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"Second Mooresville location.",url:null});
+L_({n:"ex-Clutch Indian Trail",a:"13865 E Independence Blvd, Indian Trail, NC",lat:35.0760,lng:-80.6100,s:"conversion",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"US-74 corridor. High traffic.",url:null});
+L_({n:"ex-Clutch Monroe",a:"751 E Roosevelt Blvd, Monroe, NC 28112",lat:34.9940,lng:-80.5360,s:"conversion",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"Union County market SE of Charlotte.",url:null});
+L_({n:"ex-Clutch Salisbury",a:"Salisbury, NC",lat:35.6710,lng:-80.4740,s:"conversion",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"I-85 corridor between Charlotte and Triad.",url:null});
+L_({n:"ex-Clutch W-S University",a:"5709 University Pkwy, Winston-Salem, NC",lat:36.1220,lng:-80.2800,s:"conversion",m:"triad",vpd:null,acres:null,anchor:null,price:null,d:"Near Wake Forest University.",url:null});
+L_({n:"ex-Clutch W-S Stratford",a:"289 S Stratford Rd, Winston-Salem, NC",lat:36.0860,lng:-80.2870,s:"conversion",m:"triad",vpd:null,acres:null,anchor:null,price:null,d:"High-traffic Stratford Rd.",url:null});
+L_({n:"ex-Clutch Greensboro",a:"1405 Sunset Dr, Greensboro, NC 27408",lat:36.0570,lng:-79.8110,s:"conversion",m:"triad",vpd:null,acres:null,anchor:null,price:null,d:"Bridges CLT and RDU in the Triad.",url:null});
+L_({n:"ex-Clutch Clemmons",a:"2432 Lewisville Clemmons Rd, Clemmons, NC",lat:36.0320,lng:-80.3740,s:"conversion",m:"triad",vpd:null,acres:null,anchor:null,price:null,d:"Suburban Triad west of Winston-Salem.",url:null});
+L_({n:"ex-Clutch Fayetteville",a:"3619 Ramsey St, Fayetteville, NC 28311",lat:35.0720,lng:-78.9530,s:"conversion",m:"fay",vpd:null,acres:null,anchor:null,price:null,d:"Fort Liberty military market. Job postings active.",url:null});
+
+// ═══ CLUTCH CONVERSIONS - SC ═══
+L_({n:"ex-Clutch Rock Hill",a:"2027 Celanese Rd, Rock Hill, SC",lat:34.9530,lng:-81.0430,s:"conversion",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"York County near I-77.",url:null});
+L_({n:"ex-Clutch Indian Land",a:"9424 Charlotte Hwy, Indian Land, SC",lat:34.9620,lng:-80.8890,s:"conversion",m:"clt",vpd:null,acres:null,anchor:null,price:null,d:"US-521 corridor. Lancaster County.",url:null});
+L_({n:"ex-Clutch Boiling Springs",a:"2209 Boiling Springs Rd, Boiling Springs, SC",lat:35.0470,lng:-81.9840,s:"conversion",m:"gsp",vpd:null,acres:null,anchor:null,price:null,d:"Spartanburg County suburb.",url:null});
+L_({n:"ex-Clutch Greenville E North",a:"2407 E North St, Greenville, SC",lat:34.8680,lng:-82.3400,s:"conversion",m:"gsp",vpd:null,acres:null,anchor:null,price:null,d:"Second Greenville location.",url:null});
+L_({n:"ex-Clutch Columbia Devine",a:"4716 Devine St, Columbia, SC",lat:34.0130,lng:-80.9800,s:"conversion",m:"col",vpd:null,acres:null,anchor:null,price:null,d:"Near Five Points / USC campus.",url:null});
+L_({n:"ex-Clutch Columbia Two Notch",a:"9349 Two Notch Rd, Columbia, SC",lat:34.0890,lng:-80.8960,s:"conversion",m:"col",vpd:null,acres:null,anchor:null,price:null,d:"NE Columbia, major corridor.",url:null});
+L_({n:"ex-Clutch Mt Pleasant",a:"1173 SC-41, Mount Pleasant, SC",lat:32.8620,lng:-79.8240,s:"conversion",m:"chs",vpd:null,acres:null,anchor:null,price:null,d:"Affluent Mt Pleasant, east of Charleston.",url:null});
+L_({n:"ex-Clutch N Charleston Dorchester",a:"8389 Dorchester Rd, Charleston, SC",lat:32.9370,lng:-80.0650,s:"conversion",m:"chs",vpd:null,acres:null,anchor:null,price:null,d:"North Charleston suburb.",url:null});
+
+// ═══════════════════════════════════════════════════════════
+// SCREENER-QUALIFIED TARGET SITES
+// ═══════════════════════════════════════════════════════════
+
+// ── CLT METRO ──
+L_({n:"Dark Arby's - Bayfield Pkwy, Concord",a:"6109 Bayfield Pkwy, Concord, NC 28027",lat:35.3630,lng:-80.6980,s:"site",m:"clt",vpd:"111K (I-85)",acres:"~0.6",anchor:"Super Target power center (510K SF)",price:"Contact JTU Net Lease",d:"Existing drive-thru pad. Arby's ceasing ops by Jan 2027. HH income $110K+ in 3mi. McDonald's, Chick-fil-A adjacent.",url:"https://www.loopnet.com/Listing/6109-Bayfield-Pky-Concord-NC/34527195/"});
+L_({n:"North Creek Village OP - Huntersville",a:"14013 N Creek Village Dr, Huntersville, NC 28078",lat:35.4320,lng:-80.8050,s:"site",m:"clt",vpd:"67K (Sam Furr)",acres:"0.5-2.0",anchor:"Publix (48K SF)",price:"Contact Magnolia Cos",d:"Outparcels 2, 7 & 8 available. Publix-anchored. Sam Furr Rd being widened to 6 lanes. 240 SFR + 300 MF units under construction.",url:"https://www.loopnet.com/Listing/14013-N-Creek-Village-Dr-Huntersville-NC/33791321/"});
+L_({n:"Concord Station West OP - US-29",a:"Concord Pkwy N & Poplar Tent Rd, Concord, NC",lat:35.4250,lng:-80.5700,s:"site",m:"clt",vpd:"32.5K+47K",acres:"1.0",anchor:"Stars & Strikes, Elevation Church",price:"Contact MPV Properties",d:"Signalized hard corner. 3 full access points + R-in/R-out. Fast food outparcel use listed. Exceeds 25K VPD threshold.",url:"https://mpvre.com/properties/concord-station-west/"});
+L_({n:"IKEA Blvd / Belgate - University City",a:"8145 IKEA Blvd, Charlotte, NC 28262",lat:35.3190,lng:-80.7250,s:"site",m:"clt",vpd:"High (I-85 adj)",acres:"TBD",anchor:"IKEA (367K SF), Walmart, Belgate Center",price:"LoopNet / Crexi listed",d:"Signalized intersection. Only IKEA between DC and Atlanta. Adjacent to UNCC (30K students). Massive retail node.",url:"https://www.loopnet.com/Listing/8145-Ikea-Blvd-Charlotte-NC/35173553/"});
+L_({n:"Stevens Mill Crossing OP - Matthews",a:"7800 Stevens Mill Rd, Matthews, NC 28104",lat:35.0710,lng:-80.7070,s:"site",m:"clt",vpd:"Near I-485",acres:"1.2",anchor:"Harris Teeter, CVS, McDonald's",price:"NAI Southern RE",d:"Harris Teeter anchor. McDonald's validates drive-thru use. 1.2 ac ample for DB. Affluent Matthews/Stallings submarket.",url:"https://www.loopnet.com/Listing/7800-Stevens-Mill-Rd-Matthews-NC/15558646/"});
+L_({n:"The Exchange - Indian Land, SC",a:"Hwy 521 corridor, Indian Land, SC",lat:34.9450,lng:-80.8750,s:"site",m:"clt",vpd:"Highest surface rd in county",acres:"Outparcels avail",anchor:"Costco, Lowes Foods, Walmart",price:"Providence Group",d:"Costco + Lowes Foods + Walmart nearby. Explosive residential growth from Sun City. BTS outparcels available.",url:"https://www.crexi.com/lease/properties/750381/south-carolina-the-exchange-at-indian-land"});
+L_({n:"York Ridge OP - Steele Creek",a:"11100-11116 S Tryon St, Charlotte, NC 28273",lat:35.1230,lng:-80.9290,s:"site",m:"clt",vpd:"High (S Tryon)",acres:"OP avail",anchor:"Crunch Fitness anchor",price:"LoopNet listed",d:"Drive-thru development explicitly mentioned. Signalized at Moss Rd. Steele Creek is fastest-growing CLT neighborhood. I-485 access.",url:"https://www.loopnet.com/Listing/11100-11116-S-Tryon-St-Charlotte-NC/28638332/"});
+L_({n:"Johnston Rd (US-521) / I-485 Corridor",a:"Ballantyne, Charlotte, NC",lat:35.0530,lng:-80.8470,s:"site",m:"clt",vpd:"60K",acres:"Broker outreach",anchor:"Target, Harris Teeter, Publix",price:"Off-market required",d:"HIGHEST PRIORITY CLT. 60K VPD - 2nd highest non-interstate in Charlotte. Affluent 28277 zip. Widening in design phase. Contact Cole CRE, Shook-Tarlton.",url:null});
+L_({n:"Carowinds Blvd / I-77 - Fort Mill",a:"Carowinds Blvd at I-77, Fort Mill, SC",lat:35.0020,lng:-80.9520,s:"site",m:"clt",vpd:"170K (I-77)",acres:"Pad avail",anchor:"Carowinds, retail centers",price:"Broker outreach",d:"Highest traffic count site in SC per QC News. I-77 diverging diamond upgrade. 48% pop growth since 2020. 7th fastest suburb in US.",url:null});
+L_({n:"W Wendover Ave / Battleground - GSO",a:"W Wendover Ave & Battleground Ave, Greensboro, NC",lat:36.0500,lng:-79.8580,s:"site",m:"triad",vpd:"31K-60.7K",acres:"0.76",anchor:"Target, Walmart, Costco, Kohl's (1.6M SF retail)",price:"Contact broker",d:"0.76 ac outparcel - perfect size. Signalized with 3+ access points. Premier Triad retail corridor.",url:null});
+L_({n:"Hanes Mall Blvd - Winston-Salem",a:"Hanes Mall Blvd, Winston-Salem, NC",lat:36.0580,lng:-80.3250,s:"site",m:"triad",vpd:"26.8K",acres:"OP avail",anchor:"Hanes Mall (largest NC mall)",price:"Contact CBL Properties",d:"Traffic exceeds 25K. Blvd being widened to 5 lanes. 250+ businesses along 2.9mi stretch.",url:"https://www.loopnet.com/Listing/Hanes-Mall-Blvd-Winston-Salem-NC/36517383/"});
+L_({n:"Eastchester Dr (Hwy 68) - High Point",a:"Shoppes on Eastchester, High Point, NC",lat:35.9700,lng:-80.0100,s:"site",m:"triad",vpd:"45K",acres:"OP avail",anchor:"Palladium Shopping Center",price:"Contact Bunker Land",d:"45K VPD significantly exceeds threshold. 11 outparcel opportunities along Wendover Ave / Penny Rd.",url:"https://www.loopnet.com/Listing/Eastchester-Dr-High-Point-NC/5866033/"});
+
+// ── RDU / TRIANGLE ──
+L_({n:"Glenn View Station - Durham I-85",a:"1501 Glenn School Rd, Durham, NC 27704",lat:35.9920,lng:-78.8680,s:"site",m:"rdu",vpd:"56.8K (I-85)",acres:"1.37",anchor:"Walmart Supercenter (148K SF)",price:"WRS Realty",d:"1.37 ac Walmart outparcel. I-85 Exit 180. QSR/drive-thru explicitly listed as suitable. Sale or ground lease.",url:"https://www.loopnet.com/Listing/1501-Glenn-School-Durham-NC/29548559/"});
+L_({n:"Capital Blvd / I-540 - Raleigh",a:"Capital Blvd (US-1) at I-540, Raleigh, NC",lat:35.8670,lng:-78.5850,s:"site",m:"rdu",vpd:"65.5K",acres:"Multiple",anchor:"Triangle Town Center (70ac redevelopment)",price:"Various",d:"65.5K VPD. Highest-traffic retail corridor in Wake County. Triangle Town Center sold Dec 2024 for hybrid redevelopment. Outparcel OPs.",url:null});
+L_({n:"Hwy 42 / I-40 Walmart OP - Garner",a:"Hwy 42 & I-40, Garner, NC 27529",lat:35.6560,lng:-78.5990,s:"site",m:"rdu",vpd:"I-40 interchange",acres:"1.87",anchor:"Walmart Supercenter",price:"LoopNet listed",d:"1.87 ac Walmart outparcel at I-40 interchange. Multiple lots 0.9-2.6 ac. Retail/QSR zoning.",url:"https://www.loopnet.com/Listing/NC-42-Hwy-Garner-NC/32544273/"});
+L_({n:"Garner Towne Square - US-70",a:"2580 Timber Dr, Garner, NC",lat:35.6770,lng:-78.6130,s:"site",m:"rdu",vpd:"36K (US-70)",acres:"OP avail",anchor:"Target, Kroger, Home Depot",price:"Brixmor (REIT)",d:"36K VPD on US-70 + 22K on Timber Dr. Triple anchor tenancy. Brixmor REIT manages - check outparcel portfolio.",url:"https://www.brixmor.com/leasing/retail-space/nc/garner/garner-towne-square"});
+L_({n:"Holly Springs - South Park Village",a:"601 Village Walk Dr, Holly Springs, NC 27540",lat:35.6500,lng:-78.8430,s:"site",m:"rdu",vpd:"25K+ (NC-55)",acres:"OP",anchor:"Harris Teeter",price:"LoopNet listed",d:"Outparcel 10 listed. NC-55 projected to 53K VPD. Fastest-growing in Wake County.",url:"https://www.loopnet.com/Listing/601-Village-Walk-Dr-Holly-Springs-NC/17397801/"});
+L_({n:"Capital Blvd / Wake Forest",a:"Star Rd at Capital Blvd (US-1), Wake Forest, NC",lat:35.9500,lng:-78.5150,s:"site",m:"rdu",vpd:"US-1 corridor",acres:"0.91-1.98",anchor:"Major retail node",price:"Crexi listed",d:"7.5 ac subdividable into 0.91-1.98 ac lots. Wake Forest population doubled. Primary commercial artery.",url:"https://www.crexi.com/lease/properties/445331/north-carolina-wake-forest-developmnet"});
+
+// ── COASTAL ──
+L_({n:"Market St / Ogden - Wilmington",a:"Market St & Middle Sound Loop Rd, Wilmington, NC",lat:34.2360,lng:-77.8380,s:"site",m:"coast",vpd:"46.9K",acres:"1.26 avail",anchor:"Ogden Marketplace (72K SF)",price:"$3.6M (6821 Market St)",d:"HIGHEST PRIORITY COASTAL. 46.9K VPD. Wilmington's primary retail spine. Fastest-growing NC metro. #1 relocation county.",url:null});
+L_({n:"Carolina Beach Rd / Monkey Jxn - ILM",a:"Carolina Beach Rd & Myrtle Grove Rd, Wilmington, NC",lat:34.1490,lng:-77.8810,s:"site",m:"coast",vpd:"61.9K",acres:"2.5 (graded)",anchor:"Target (new), Home Depot",price:"CRE Expert listing",d:"61.9K VPD! Pre-graded pad with utilities stubbed. Signalized intersection. New Target opening.",url:"https://www.crexi.com/properties/1810734/north-carolina-6430-carolina-beach-rd"});
+L_({n:"Leland Village - US-17 Publix",a:"US-17 & Kingsbridge Rd, Leland, NC",lat:34.2180,lng:-78.0450,s:"site",m:"coast",vpd:"30K-50K (US-17)",acres:"OP upcoming",anchor:"Publix (132K SF), Marshalls, Ulta",price:"Groundbreaking 2025",d:"Brand new Publix-anchored center. 41% pop growth 2020-24. 12,500-home development proposed nearby.",url:null});
+L_({n:"Gateway Marketplace OP - Jacksonville",a:"3000 Western Blvd, Jacksonville, NC 28546",lat:34.7480,lng:-77.4580,s:"site",m:"coast",vpd:"38.5K-41K",acres:"Last OP",anchor:"Publix (49K SF), Michaels, HomeGoods",price:"Foundry Commercial / CBRE",d:"Last remaining outparcel. Camp Lejeune (126K military). Youngest city in US (avg age 22.8). Signalized.",url:"https://www.foundrycommercial.com/property/gateway-marketplace-outparcels/"});
+L_({n:"Western Forum Pads - Jacksonville",a:"Forum Rd & Western Blvd, Jacksonville, NC",lat:34.7410,lng:-77.4750,s:"site",m:"coast",vpd:"41K",acres:"5 frontage OPs",anchor:"Academy Sports, Carmike Cinema",price:"LoopNet (Pad 3)",d:"10 outparcels total. 5 on Western Blvd frontage. New traffic signal at Forum Rd. 41K VPD.",url:"https://www.loopnet.com/Listing/Pad-3-Forum-Rd-Jacksonville-NC/3908028/"});
+L_({n:"Conway Coastal Marketplace - US-501",a:"2875 US-501, Conway, SC 29526",lat:33.7680,lng:-79.0060,s:"site",m:"coast",vpd:"53K-54.3K",acres:"1.26 (Pad F)",anchor:"Walmart adjacency, 1600 MF units",price:"CRE Expert / LoopNet",d:"TOP MYRTLE OPPORTUNITY. Pad F = 1.26ac. 3 access points. US-501 widening to 6 lanes. Walmart adjacent. 53K+ VPD.",url:"https://www.loopnet.com/Listing/2875-US-501-BUS-Conway-SC/31157433/"});
+L_({n:"SayeBrook Town Center - MB US-17",a:"Hwy 17 Bypass & Hwy 544, Myrtle Beach, SC",lat:33.6550,lng:-78.9520,s:"site",m:"coast",vpd:"79.6K (US-17)",acres:"DT endcap avail",anchor:"Target, Trader Joe's, Marshalls",price:"Colliers listing",d:"Drive-through end cap specifically available. 79.6K VPD is extraordinary. Target + Trader Joe's anchor.",url:"https://www.loopnet.com/Listing/200-Sayebrook-Pky-Myrtle-Beach-SC/24611374/"});
+L_({n:"Gator Hole Plaza - N Myrtle Beach",a:"550-620 Hwy 17 N, N Myrtle Beach, SC",lat:33.8240,lng:-78.6830,s:"site",m:"coast",vpd:"78.8K",acres:"Pad in play",anchor:"Walmart, Home Depot",price:"LoopNet",d:"78.8K VPD. Former TGI Fridays pad available. Walmart + Home Depot. CFA competing for same pad - move fast.",url:"https://www.loopnet.com/Listing/620-Highway-17-N-Myrtle-Beach-SC/13627096/"});
+L_({n:"US-278 / Buckwalter - Bluffton",a:"US-278 at Buckwalter Pkwy, Bluffton, SC 29910",lat:32.2590,lng:-80.8420,s:"site",m:"coast",vpd:"50.4K",acres:"Subdividable",anchor:"Publix, MUSC Hospital (2026)",price:"LoopNet listed",d:"50.4K VPD. 1,400 LF highway frontage. MUSC hospital opening 2026. Bluffton 1,386% growth in 23 years.",url:"https://www.loopnet.com/Listing/US-Hwy-278-Buckwalter-Pkwy-Bluffton-SC/16671711/"});
+L_({n:"SC-170 / US-278 Gateway - Bluffton",a:"SW Corner SC-170 & US-278, Bluffton, SC",lat:32.2530,lng:-80.8700,s:"site",m:"coast",vpd:"68K",acres:"Avail",anchor:"Gateway intersection",price:"LoopNet listed",d:"68K VPD - nearly 3x Dutch Bros threshold. Gateway between Bluffton and Hilton Head. Signalized.",url:"https://www.loopnet.com/Listing/SW-Corner-SC-170-US-278-Bluffton-SC/13992637/"});
+L_({n:"Florence I-95/I-20 Pad",a:"I-95 & I-20 junction, Florence, SC",lat:34.1954,lng:-79.7626,s:"site",m:"coast",vpd:"High (dual interstate)",acres:"Various",anchor:"Major travel stop",price:"Various",d:"I-95/I-20 junction. Major travel stop. Regional medical center. Highway traveler market.",url:null});
+
+// ── GSP / UPSTATE ──
+L_({n:"Woodruff Rd / I-385 OP - Greenville",a:"1200 Woodruff Rd, Greenville, SC 29607",lat:34.8380,lng:-82.3270,s:"site",m:"gsp",vpd:"42.4K+89.5K I-385",acres:"1.39",anchor:"Walmart (0.25mi)",price:"LoopNet - GL/BTS",d:"I-385 interchange visibility. 42.4K+ VPD. 1.39ac subdividable. Morning commuter capture.",url:"https://www.loopnet.com/Listing/1200-Woodruff-Rd-Greenville-SC/25465316/"});
+L_({n:"Woodruff Rd Walmart OP - Greenville",a:"1465 Woodruff Rd, Greenville, SC 29607",lat:34.8340,lng:-82.3350,s:"site",m:"gsp",vpd:"40K+",acres:"3.37",anchor:"Walmart SuperCenter, Hobby Lobby",price:"MyEListing - sale",d:"Directly adjacent to Walmart. 3.37ac could yield multiple pads. Drive-thru proven area.",url:"https://www.loopnet.com/Listing/1465-Woodruff-Rd-Greenville-SC/26447113/"});
+L_({n:"Wade Hampton / Poinsett - Greer",a:"805 W Wade Hampton Blvd, Greer, SC",lat:34.9390,lng:-82.2330,s:"site",m:"gsp",vpd:"30.5K",acres:"0.52",anchor:"BOA, Walmart shadow",price:"LoopNet listed",d:"PERFECT SIZE: 0.52ac. Hard corner at signalized intersection. 30K+ VPD. Greer retail sales $2B+. No DB in Greer.",url:"https://www.loopnet.com/Listing/805-W-Wade-Hampton-Blvd-Greer-SC/17514357/"});
+L_({n:"Bolden Street District - Laurens Rd",a:"Laurens Rd, Greenville, SC",lat:34.8450,lng:-82.3590,s:"site",m:"gsp",vpd:"30.3K",acres:"Future pads",anchor:"750K SF new retail planned",price:"Contact Verdae Dev",d:"223-acre revitalization. 750K SF retail + 2,900 residences. Groundbreaking mid-2026. Ground-floor opportunity.",url:null});
+
+// ── COLUMBIA ──
+L_({n:"Columbiana Centre OP - Harbison",a:"100 Columbiana Circle, Columbia, SC 29212",lat:34.0530,lng:-81.1380,s:"site",m:"col",vpd:"31K (Harbison)",acres:"5K SF buildable",anchor:"Columbiana Centre Mall",price:"SVN Blackstream / LoopNet",d:"31K VPD on Harbison Blvd. I-26: 107K VPD. Regional mall outparcel.",url:"https://www.loopnet.com/Listing/100-Columbiana-Cir-Columbia-SC/39215654/"});
+L_({n:"Costco Outparcels - Columbia",a:"Piney Grove Rd & Fernandina Rd, Columbia, SC",lat:34.0640,lng:-81.1470,s:"site",m:"col",vpd:"I-26 vis",acres:"4.16+5.74",anchor:"Costco, Floor & Decor",price:"TSCG listing",d:"Adjacent to Costco. I-26 visibility. 9.9 total acres (two parcels). Subdividable.",url:"https://www.loopnet.com/Listing/Piney-Grove-Rd-Columbia-SC/31389956/"});
+L_({n:"Home Depot OP - Two Notch Rd",a:"7701 Two Notch Rd, Columbia, SC 29223",lat:34.0870,lng:-80.9050,s:"site",m:"col",vpd:"Major corridor",acres:"1.12",anchor:"Home Depot, restaurant row",price:"$550K",d:"$550K price point fits screener (<$700K). 1.12ac. Home Depot anchor. One lot from signalized intersection.",url:"https://www.loopnet.com/Listing/7701-Two-Notch-Rd-Columbia-SC/24776983/"});
+L_({n:"Garners Ferry / Patterson Walmart",a:"7510 Garners Ferry Rd, Columbia, SC 29209",lat:33.9620,lng:-80.9100,s:"site",m:"col",vpd:"40K+",acres:"Pad",anchor:"Walmart, Lowe's, Aldi",price:"LoopNet listed",d:"40K+ VPD. Signalized at Patterson Rd. Dense QSR co-tenancy (McDonald's, CFA, Popeyes).",url:"https://www.loopnet.com/Listing/7510-Garners-Ferry-Rd-Columbia-SC/25102602/"});
+L_({n:"Lexington / Irmo - Lake Murray",a:"US-1 / I-20, Lexington, SC",lat:33.9810,lng:-81.2360,s:"site",m:"col",vpd:"I-20 corridor",acres:"Various",anchor:"Major retail corridor",price:"Various",d:"Fastest-growing Columbia suburb. Lake Murray area. Young families. I-20 corridor.",url:null});
+
+// ── CHARLESTON ──
+L_({n:"Ashley Landing - West Ashley",a:"Sam Rittenberg Blvd, West Ashley, Charleston, SC",lat:32.7820,lng:-79.9880,s:"site",m:"chs",vpd:"High corridor",acres:"Future pads",anchor:"Publix (Oct 2026), 240K SF retail",price:"Contact Edens (developer)",d:"$348M redevelopment. New Publix anchor. 285 apartments + 100 townhomes. Opens late 2026. Ground-floor opportunity.",url:"https://edens.com/property/ashley-landing/"});
+L_({n:"Goose Creek / Cane Bay",a:"US-176, Goose Creek, SC",lat:32.9810,lng:-80.0320,s:"site",m:"chs",vpd:"Growing",acres:"Various",anchor:"Cane Bay (10K+ homes planned)",price:"Various",d:"Berkeley County rapid growth. Cane Bay master-planned community. 10K+ homes planned.",url:null});
+
+// ── WNC ──
+L_({n:"1480 Tunnel Rd - Asheville",a:"1480 Tunnel Rd, Asheville, NC 28805",lat:35.5660,lng:-82.4830,s:"site",m:"wnc",vpd:"17K-24K (verify)",acres:"0.72",anchor:"Near I-40 Exit 55",price:"$775K (GL/BTS)",d:"0.72ac FLAT (rare in WNC). Hwy Business zoning - DRIVE-THRU ALLOWED. Utilities on site. Verify current VPD with NCDOT - may be below 25K threshold.",url:"https://www.loopnet.com/Listing/1480-Tunnel-Rd-Asheville-NC/33868838/"});
+L_({n:"Hwy 321 - Hickory",a:"Highway 321, Hickory, NC",lat:35.7380,lng:-81.3150,s:"site",m:"wnc",vpd:"33K",acres:"0.80",anchor:"Food Lion anchor",price:"Ground lease",d:"33K VPD. 0.80ac near target. Data center boom (Apple, Google, Meta). Growing tech workforce.",url:"https://www.loopnet.com/Listing/Highway-321-Hickory-NC/28221416/"});
+
+// ═══ Colors & Config ═══
+const colors={open:'#3fb950',conversion:'#d29922',planned:'#a371f7',site:'#f0883e','ai-site':'#58a6ff'};
+const labels={open:'Open',conversion:'Clutch Conversion',planned:'Planned / Dev',site:'Target Site','ai-site':'AI Qualified'};
+const mktNames={clt:'Charlotte',rdu:'Raleigh-Durham',triad:'Triad',chs:'Charleston',gsp:'Greenville-Spartanburg',col:'Columbia',coast:'Coastal',fay:'Fayetteville',wnc:'Mountains'};
+const mktViews={all:{c:[34.3,-80],z:7},clt:{c:[35.22,-80.84],z:10},rdu:{c:[35.83,-78.7],z:10},triad:{c:[36.06,-80.1],z:10},chs:{c:[32.9,-80],z:10},gsp:{c:[34.85,-82.3],z:10},col:{c:[34,-81.05],z:10},coast:{c:[33.7,-79],z:8},wnc:{c:[35.55,-82],z:10},fay:{c:[35.06,-78.97],z:11}};
+
+function buildInfoContent(loc){
+  var tags='';
+  if(loc.vpd)tags+='<span class="tag tag-vpd">'+loc.vpd+' VPD</span>';
+  if(loc.acres)tags+='<span class="tag tag-acres">'+loc.acres+' ac</span>';
+  if(loc.anchor)tags+='<span class="tag tag-anchor">'+loc.anchor+'</span>';
+  if(loc.price)tags+='<span class="tag tag-price">'+loc.price+'</span>';
+  var urlLink=loc.url?'<br><a href="'+loc.url+'" target="_blank" style="color:#58a6ff;font-size:11px">View Listing &rarr;</a>':'';
+  var dirLink='<br><a href="https://www.google.com/maps/dir/?api=1&destination='+loc.lat+','+loc.lng+'" target="_blank" style="color:#58a6ff;font-size:11px">Get directions</a>';
+  return '<div class="gm-info-window" style="font-size:12px;line-height:1.5;min-width:260px;max-width:340px;color:#1a1a1a"><b>'+loc.n+'</b><br><span style="color:#6c757d">'+loc.a+'</span><br>'+(tags?'<div style="margin:6px 0">'+tags+'</div>':'')+'<span style="color:'+(colors[loc.s]||colors.site)+';font-weight:600">'+(labels[loc.s]||loc.s)+'</span> <span style="color:#6c757d">&bull; '+(mktNames[loc.m]||loc.m)+'</span><br>'+loc.d+urlLink+dirLink+'</div>';
+}
+
+async function loadAISitesAndRender(){
+  try {
+    if(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length>0&&firebase.firestore){
+      const db=firebase.firestore();
+      const snap=await db.collection('aiQualifiedSites').get();
+      snap.docs.forEach(doc=>{
+        const d=doc.data();
+        const lat=d.lat,lng=d.lng;
+        if(lat==null||lng==null)return;
+        const n=d.title||d.address||'AI site';
+        const a=d.address||'';
+        const m=d.market||null;
+        const vpd=d.extracted&&d.extracted.vpd!=null?String(d.extracted.vpd):null;
+        const acres=d.extracted&&d.extracted.siteAreaAcres!=null?String(d.extracted.siteAreaAcres):null;
+        const anchor=d.extracted&&d.extracted.cotenancy!=null?('Score '+d.extracted.cotenancy):null;
+        const price=d.extracted&&d.extracted.landPrice!=null?'$'+Number(d.extracted.landPrice).toLocaleString():null;
+        const verdict=d.verdict||'';
+        const dsc=(d.criteriaResult&&d.criteriaResult.yoc!=null)?('YOC '+d.criteriaResult.yoc.toFixed(1)+'%'):'';
+        let desc=verdict?verdict+' — '+dsc:dsc;
+        if(d.incompleteData===true||(verdict==='CONDITIONAL'&&d.dataCompleteness!=null&&d.dataCompleteness<0.6)) desc+=' — Incomplete data, verify in screener';
+        locations.push({n,a,lat,lng,s:'ai-site',m,vpd,acres,anchor,price,d:desc,url:d.url||null});
+      });
+      const metaSnap=await db.collection('scrapeMetadata').doc('lastRun').get();
+      if(metaSnap.exists){
+        const meta=metaSnap.data();
+        const el=document.getElementById('ai-scrape-meta');
+        const lastEl=document.getElementById('last-scraped');
+        if(el&&lastEl){
+          el.style.display='block';
+          const t=meta.lastRunAt&&meta.lastRunAt.toDate?meta.lastRunAt.toDate():null;
+          lastEl.textContent=t?'Last scraped: '+t.toLocaleString():'Scrape metadata available.';
+        }
+      }
+    }
+  }catch(e){ console.warn('Firestore load failed',e); }
+  renderMapAndList();
+}
+
+function renderMapAndList(){
+  var sOpen=document.getElementById('s-open');if(sOpen)sOpen.textContent=locations.filter(l=>l.s==='open').length;
+  var sConv=document.getElementById('s-conv');if(sConv)sConv.textContent=locations.filter(l=>l.s==='conversion').length;
+  var sPlan=document.getElementById('s-plan');if(sPlan)sPlan.textContent=locations.filter(l=>l.s==='planned').length;
+  var sSite=document.getElementById('s-site');if(sSite)sSite.textContent=locations.filter(l=>l.s==='site').length;
+  var sAi=document.getElementById('s-ai');if(sAi)sAi.textContent=locations.filter(l=>l.s==='ai-site').length;
+  renderList();
+  if(!map)return;
+  gMarkers.forEach(m=>m.setMap(null));gCircles.forEach(c=>c.setMap(null));gMarkers=[];gCircles=[];
+  locations.forEach(loc=>{
+    var c=colors[loc.s]||colors.site;
+    var mk=new google.maps.Marker({position:{lat:loc.lat,lng:loc.lng},map:map,icon:{path:google.maps.SymbolPath.CIRCLE,scale:(loc.s==='site'||loc.s==='ai-site')?10:7,fillColor:c,fillOpacity:1,strokeColor:'#fff',strokeWeight:1.5}});
+    mk.ld=loc;
+    mk.addListener('click',function(){infoWindow.setContent(buildInfoContent(loc));infoWindow.open(map,mk);});
+    gMarkers.push(mk);
+    var circleOpt={center:{lat:loc.lat,lng:loc.lng},radius:4828,map:map,fillColor:c,fillOpacity:(loc.s==='site'||loc.s==='ai-site')?0.03:0.05,strokeColor:c,strokeOpacity:0.2,strokeWeight:1};
+    var circle=new google.maps.Circle(circleOpt);circle.ls=loc.s;gCircles.push(circle);
+  });
+  if(map){map.setCenter({lat:34.3,lng:-80});map.setZoom(7);}
+}
+
+let curF='all',srch='';
+function renderList(){
+  const el=document.getElementById('loc-list');
+  if(!el)return;
+  let fl=curF==='all'?locations:locations.filter(l=>l.s===curF);
+  if(srch){const s=srch.toLowerCase();fl=fl.filter(l=>(l.n+l.a+l.d+(l.anchor||'')+(l.vpd||'')).toLowerCase().includes(s));}
+  el.innerHTML=fl.map(l=>{
+    let meta='';
+    if(l.vpd)meta+=`<span style="color:#3fb950">${l.vpd} VPD</span>`;
+    if(l.acres)meta+=`<span style="color:#d29922">${l.acres} ac</span>`;
+    if(l.anchor)meta+=`<span style="color:#58a6ff">${l.anchor}</span>`;
+    const link=l.url?`<a class="loc-link" href="${l.url}" target="_blank" onclick="event.stopPropagation()">View Listing &rarr;</a>`:'';
+    return `<div class="loc-item" onclick="zoomTo(${l.lat},${l.lng})"><div class="loc-name">${l.n}</div><div class="loc-addr">${l.a}</div>${meta?'<div class="loc-meta">'+meta+'</div>':''}<div class="loc-meta"><span class="status-${l.s}">${labels[l.s]||l.s}</span> <span style="color:#555">${mktNames[l.m]||l.m}</span></div>${link}</div>`;
+  }).join('');
+}
+function searchLocs(v){srch=v;renderList();}
+function toggleFilter(f){
+  curF=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  var btn=document.querySelector('[data-filter="'+f+'"]');if(btn)btn.classList.add('active');
+  gMarkers.forEach(mk=>{var st=mk.ld?mk.ld.s:null;if(!st)return;mk.setMap((f==='all'||st===f)?map:null);});
+  gCircles.forEach(c=>{var st=c.ls;if(!st)return;c.setMap((f==='all'||st===f)?map:null);});
+  renderList();
+}
+
+function flyTo(m,btn){
+  document.querySelectorAll('.market-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  var v=mktViews[m]||mktViews.all;map.panTo({lat:v.c[0],lng:v.c[1]});map.setZoom(v.z);
+}
+function zoomTo(lat,lng){
+  map.panTo({lat:lat,lng:lng});map.setZoom(13);
+  var mk=gMarkers.find(m=>m.ld&&m.ld.lat===lat&&m.ld.lng===lng);if(mk)setTimeout(function(){infoWindow.setContent(buildInfoContent(mk.ld));infoWindow.open(map,mk);},300);
+}
+
+function init(){
+  var firebaseConfig={projectId:'dutch-bros-site-selector',apiKey:'AIzaSyAxTRVlG-NJX2ARX0UprNoh2MqcKUjhuWw',authDomain:'dutch-bros-site-selector.firebaseapp.com',storageBucket:'dutch-bros-site-selector.firebasestorage.app',messagingSenderId:'760395145160',appId:'1:760395145160:web:6d1999b373855003792afd'};
+  if(firebaseConfig.apiKey){try{firebase.initializeApp(firebaseConfig);}catch(e){}}
+  loadAISitesAndRender();
+}
+
+function initMap(){
+  try {
+    var mapEl=document.getElementById('map');
+    if(mapEl&&typeof google!=='undefined'&&google.maps){
+      map=new google.maps.Map(mapEl,{center:{lat:34.5,lng:-80},zoom:7,zoomControl:true,mapTypeControl:true,streetViewControl:true,fullscreenControl:true,scaleControl:true});
+      infoWindow=new google.maps.InfoWindow();
+      var searchInput=document.getElementById('loc-search');
+      if(searchInput&&google.maps.places&&google.maps.places.Autocomplete){
+        var autocomplete=new google.maps.places.Autocomplete(searchInput,{types:['establishment','geocode'],componentRestrictions:{country:['us']},fields:['geometry']});
+        autocomplete.addListener('place_changed',function(){
+          var place=autocomplete.getPlace();if(place.geometry&&place.geometry.location&&map){map.panTo(place.geometry.location);map.setZoom(14);}
+        });
+      }
+    }
+  }catch(e){ console.warn('Map init failed',e); }
+  init();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SITE SCREENER ENGINE
+// ═══════════════════════════════════════════════════════════
+function runScreener(){
+  // Section A: Hard Go/No-Go
+  const area=parseFloat(document.getElementById('sa-area').value);
+  const stack=parseInt(document.getElementById('sa-stack').value);
+  const vpd=parseInt(document.getElementById('sa-vpd').value);
+  const front=document.getElementById('sa-front').value;
+  const access=parseInt(document.getElementById('sa-access').value);
+  const corner=document.getElementById('sa-corner').value;
+  const zoning=document.getElementById('sa-zoning').value;
+  const util=document.getElementById('sa-util').value;
+
+  const checks=[
+    {id:'sa-area-p',pass:!isNaN(area)&&area>=0.50},
+    {id:'sa-stack-p',pass:!isNaN(stack)&&stack>=16},
+    {id:'sa-vpd-p',pass:!isNaN(vpd)&&vpd>=25000},
+    {id:'sa-front-p',pass:front==='1'},
+    {id:'sa-access-p',pass:!isNaN(access)&&access>=2},
+    {id:'sa-corner-p',pass:corner==='1'},
+    {id:'sa-zoning-p',pass:zoning==='1'},
+    {id:'sa-util-p',pass:util==='1'}
+  ];
+  let aPass=0;
+  checks.forEach(c=>{
+    const el=document.getElementById(c.id);
+    const filled=el.previousElementSibling.value!=='';
+    if(!filled){el.className='pass-badge pass-na';el.textContent='--';}
+    else if(c.pass){el.className='pass-badge pass-yes';el.textContent='PASS';aPass++;}
+    else{el.className='pass-badge pass-no';el.textContent='FAIL';}
+  });
+  document.getElementById('sa-score').textContent=aPass+' / 8 PASS';
+  document.getElementById('sa-score').style.color=aPass===8?'#3fb950':aPass>=6?'#d29922':'#f85149';
+
+  // Section B: Scored criteria
+  const pop=parseInt(document.getElementById('sb-pop').value);
+  const income=parseInt(document.getElementById('sb-income').value);
+  const growth=parseFloat(document.getElementById('sb-growth').value);
+  const workers=parseInt(document.getElementById('sb-workers').value);
+  const commute=document.getElementById('sb-commute').value;
+  const cotenancy=document.getElementById('sb-cotenancy').value;
+  const compete=document.getElementById('sb-compete').value;
+  const dbprox=parseFloat(document.getElementById('sb-dbprox').value);
+
+  function scoreField(val,thresholds){
+    if(isNaN(val))return 0;
+    for(let i=thresholds.length-1;i>=0;i--){if(val>=thresholds[i])return i+1;}
+    return 1;
+  }
+  const bScores=[
+    {id:'sb-pop-s',score:scoreField(pop,[500,1500,3000,5000,8000])},
+    {id:'sb-income-s',score:scoreField(income,[35000,50000,65000,85000,110000])},
+    {id:'sb-growth-s',score:scoreField(growth,[0,3,7,12,20])},
+    {id:'sb-workers-s',score:scoreField(workers,[2000,8000,15000,25000,40000])},
+    {id:'sb-commute-s',score:commute?parseInt(commute):0},
+    {id:'sb-cotenancy-s',score:cotenancy?parseInt(cotenancy):0},
+    {id:'sb-compete-s',score:compete?parseInt(compete):0},
+    {id:'sb-dbprox-s',score:scoreField(dbprox,[0.5,2,4,7,12])}
+  ];
+  let bTotal=0;
+  bScores.forEach(b=>{
+    const el=document.getElementById(b.id);
+    if(b.score>0){el.textContent=b.score+'/5';bTotal+=b.score;}
+    else{el.textContent='--';}
+  });
+  document.getElementById('sb-score').textContent=bTotal+' / 40 Points';
+  document.getElementById('sb-score').style.color=bTotal>=30?'#3fb950':bTotal>=20?'#58a6ff':'#d29922';
+
+  // Section C: Financial
+  const land=parseFloat(document.getElementById('sc-land').value)||0;
+  const hard=parseFloat(document.getElementById('sc-hard').value)||934500;
+  const softPct=(parseFloat(document.getElementById('sc-softpct').value)||11)/100;
+  const rent=parseFloat(document.getElementById('sc-rent').value)||0;
+  const esc=(parseFloat(document.getElementById('sc-esc').value)||10)/100;
+  const exitCap=(parseFloat(document.getElementById('sc-exitcap').value)||5.25)/100;
+  const term=parseInt(document.getElementById('sc-term').value)||15;
+  const ltv=(parseFloat(document.getElementById('sc-ltv').value)||65)/100;
+  const rate=(parseFloat(document.getElementById('sc-rate').value)||6.5)/100;
+  const amort=parseInt(document.getElementById('sc-amort').value)||25;
+
+  const soft=hard*softPct;
+  const totalCost=land+hard+soft;
+  const yoc=totalCost>0?(rent/totalCost)*100:0;
+  // Escalated rent at exit (every 5 yrs)
+  const escPeriods=Math.floor(term/5);
+  const exitRent=rent*Math.pow(1+esc,escPeriods);
+  const exitVal=exitCap>0?exitRent/exitCap:0;
+  const profit=exitVal-totalCost;
+  const roc=totalCost>0?(profit/totalCost)*100:0;
+  // Debt service
+  const loanAmt=totalCost*ltv;
+  const monthRate=rate/12;
+  const nPay=amort*12;
+  const monthPay=loanAmt*(monthRate*Math.pow(1+monthRate,nPay))/(Math.pow(1+monthRate,nPay)-1);
+  const annualDS=monthPay*12;
+  const dscr=annualDS>0?rent/annualDS:0;
+
+  const fmt=v=>'$'+Math.round(v).toLocaleString();
+  document.getElementById('r-totalcost').textContent=fmt(totalCost);
+  document.getElementById('r-noi').textContent=fmt(rent);
+  document.getElementById('r-yoc').textContent=yoc.toFixed(2)+'%';
+  document.getElementById('r-yoc').className='r-value '+(yoc>=6.5?'r-green':'r-red');
+  document.getElementById('r-exitval').textContent=fmt(exitVal);
+  document.getElementById('r-profit').textContent=fmt(profit);
+  document.getElementById('r-profit').className='r-value '+(profit>200000?'r-green':'r-red');
+  document.getElementById('r-roc').textContent=roc.toFixed(1)+'%';
+  document.getElementById('r-roc').className='r-value '+(roc>10?'r-green':roc>0?'r-yellow':'r-red');
+  document.getElementById('r-ds').textContent=fmt(annualDS);
+  document.getElementById('r-dscr').textContent=dscr.toFixed(2)+'x';
+  document.getElementById('r-dscr').className='r-value '+(dscr>=1.25?'r-green':dscr>=1.0?'r-yellow':'r-red');
+
+  document.getElementById('screener-results').style.display='block';
+
+  // Verdict
+  const vEl=document.getElementById('screener-verdict');
+  vEl.style.display='block';
+  if(aPass===8&&bTotal>=28&&yoc>=6.5&&profit>200000){
+    vEl.className='screener-verdict verdict-go';
+    vEl.innerHTML='GO &mdash; Site meets all Dutch Bros criteria. Proceed to LOI.';
+  } else if(aPass>=6&&bTotal>=20&&yoc>=5.5){
+    vEl.className='screener-verdict verdict-maybe';
+    vEl.innerHTML='CONDITIONAL &mdash; Site needs further diligence on flagged items.';
+  } else {
+    vEl.className='screener-verdict verdict-nogo';
+    vEl.innerHTML='NO-GO &mdash; Site does not meet minimum Dutch Bros thresholds.';
+  }
+}
+
+function resetScreener(){
+  document.querySelectorAll('#tab-screener input').forEach(i=>{
+    if(i.id==='sc-hard')i.value='934500';
+    else if(i.id==='sc-softpct')i.value='11';
+    else if(i.id==='sc-esc')i.value='10';
+    else if(i.id==='sc-exitcap')i.value='5.25';
+    else if(i.id==='sc-term')i.value='15';
+    else if(i.id==='sc-ltv')i.value='65';
+    else if(i.id==='sc-rate')i.value='6.50';
+    else if(i.id==='sc-amort')i.value='25';
+    else i.value='';
+  });
+  document.querySelectorAll('#tab-screener select').forEach(s=>s.selectedIndex=0);
+  document.querySelectorAll('.pass-badge').forEach(b=>{b.className='pass-badge pass-na';b.textContent='--';});
+  document.querySelectorAll('.score-badge').forEach(b=>{b.textContent='--';});
+  document.getElementById('sa-score').textContent='-- / 8 PASS';
+  document.getElementById('sa-score').style.color='#6c757d';
+  document.getElementById('sb-score').textContent='-- / 40 Points';
+  document.getElementById('sb-score').style.color='#58a6ff';
+  document.getElementById('screener-results').style.display='none';
+  document.getElementById('screener-verdict').style.display='none';
+}
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAxTRVlG-NJX2ARX0UprNoh2MqcKUjhuWw&libraries=places&callback=initMap"></script>
+</body>
+</html>

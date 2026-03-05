@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // AI-qualified sites: read-only for all (public map); write only via Admin SDK in Cloud Functions
+    match /aiQualifiedSites/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /scrapeMetadata/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /processedUrls/{docId} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
