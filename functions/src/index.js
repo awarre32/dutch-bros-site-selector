@@ -137,6 +137,7 @@ async function runScrapeJob(db) {
   let stored = 0;
   let skipped = 0;
   const verdictCounts = { GO: 0, CONDITIONAL: 0, 'NO-GO': 0 };
+  const processedDetails = [];
 
   const alreadyProcessed = await loadProcessedUrls(db);
 
@@ -145,6 +146,7 @@ async function runScrapeJob(db) {
     alreadyProcessed,
   });
   scraped = listings.length;
+  console.log(`New listings after dedup: ${scraped} (${alreadyProcessed.size} already processed)`);
   const toProcess = listings.slice(0, MAX_LISTINGS_PER_RUN);
 
   for (const listing of toProcess) {
@@ -153,9 +155,15 @@ async function runScrapeJob(db) {
       if (result.verdict) verdictCounts[result.verdict] = (verdictCounts[result.verdict] || 0) + 1;
       if (result.stored) stored++;
       extracted++;
+      processedDetails.push({ url: listing.url?.slice(0, 80), source: listing.source, verdict: result.verdict, stored: result.stored });
     } catch (e) {
       console.error('Process error', listing.url, e);
+      processedDetails.push({ url: listing.url?.slice(0, 80), source: listing.source, error: e.message });
     }
+  }
+
+  if (processedDetails.length > 0) {
+    console.log('Processed listings:', JSON.stringify(processedDetails));
   }
 
   const meta = {
