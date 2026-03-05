@@ -17,18 +17,43 @@ const GOOGLE_CSE_CX = process.env.GOOGLE_CSE_CX;
  * site:loopnet.com/Listing/ restricts to actual LoopNet listings.
  */
 const SERPER_QUERIES = [
-  // LoopNet individual listings (site: prefix targets actual listing pages)
+  // LoopNet individual listings by state
   'site:loopnet.com/Listing/ North Carolina retail outparcel for sale',
   'site:loopnet.com/Listing/ South Carolina retail outparcel for sale',
-  'site:loopnet.com/Listing/ Charlotte Raleigh outparcel drive-thru',
-  'site:loopnet.com/Listing/ Greenville Charleston Myrtle Beach outparcel',
-  // Multi-platform discovery (finds Crexi, Colliers, Foundry, CBRE, etc.)
-  'retail outparcel pad site for sale Charlotte NC acres NNN 2025 OR 2026',
+  'site:loopnet.com/Listing/ Charlotte NC outparcel drive-thru pad site',
+  'site:loopnet.com/Listing/ Raleigh Durham NC outparcel retail land',
+  'site:loopnet.com/Listing/ Greenville Charleston SC outparcel',
+  'site:loopnet.com/Listing/ Myrtle Beach Columbia SC retail pad',
+  'site:loopnet.com/Listing/ NC SC commercial land acres for sale',
+  // Crexi individual listings
+  'site:crexi.com/properties/ North Carolina outparcel retail for sale',
+  'site:crexi.com/properties/ South Carolina outparcel retail for sale',
+  // Multi-platform: CLT metro
+  'retail outparcel pad site for sale Charlotte NC acres 2025 OR 2026',
+  'commercial land for sale Charlotte Huntersville Concord NC drive-thru',
+  'outparcel for sale Matthews Indian Trail Mooresville NC retail',
+  '"ground lease" OR "pad site" Charlotte NC NNN QSR coffee',
+  // Multi-platform: RDU / Triangle
+  'outparcel for sale Raleigh Durham NC drive-thru QSR retail land',
+  'retail pad site for sale Wake Forest Holly Springs Garner NC',
+  'commercial outparcel Cary Apex NC for sale retail land',
+  // Multi-platform: Triad
+  'outparcel for sale Greensboro Winston-Salem High Point NC retail',
+  // Multi-platform: Upstate SC
   'commercial outparcel for sale Greenville Spartanburg SC drive-thru QSR',
-  'commercial outparcel for sale Raleigh Durham NC drive-thru QSR',
-  'outparcel land for sale Wilmington Myrtle Beach NC SC retail',
-  'outparcel land for sale Columbia Charleston SC commercial restaurant',
-  '"pad site" OR "outparcel" for sale NC OR SC retail drive-thru acres',
+  'retail land pad site Greer Simpsonville Anderson SC for sale',
+  // Multi-platform: Coastal
+  'outparcel land for sale Wilmington NC retail drive-thru commercial',
+  'outparcel land for sale Myrtle Beach Conway Bluffton SC retail',
+  'commercial pad site Jacksonville Leland NC for sale',
+  // Multi-platform: Charleston / Columbia
+  'outparcel land for sale Columbia Lexington SC commercial restaurant',
+  'retail outparcel for sale Charleston Summerville Goose Creek SC',
+  // Broad sweeps
+  '"pad site" OR "outparcel" for sale "North Carolina" retail drive-thru',
+  '"pad site" OR "outparcel" for sale "South Carolina" retail drive-thru',
+  'NNN drive-thru ground lease for sale NC SC 2026',
+  'commercial land for sale NC SC "hard corner" OR "signalized" acres',
 ];
 
 const FIRECRAWL_QUERIES = [
@@ -37,6 +62,9 @@ const FIRECRAWL_QUERIES = [
   'outparcel for sale Greenville SC retail pad site drive-thru',
   'outparcel for sale Charleston Columbia SC commercial land',
   'NNN drive-thru property for sale NC SC outparcel land',
+  'retail pad site ground lease Charlotte Raleigh NC 2026',
+  'commercial outparcel Myrtle Beach Wilmington SC NC for sale',
+  'retail land hard corner outparcel NC SC for sale QSR',
 ];
 
 const DELAY_MS = 400;
@@ -112,7 +140,7 @@ async function searchWithSerper(maxResults) {
           'X-API-KEY': SERPER_API_KEY,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ q: query, num: 10 }),
+        body: JSON.stringify({ q: query, num: 20 }),
       });
 
       if (!res.ok) {
@@ -226,19 +254,16 @@ async function searchWithGoogleCSE(maxResults) {
 
 // ── Combined discovery ────────────────────────────────────────────
 
-async function searchListings({ maxResults = 40 } = {}) {
-  // Run Serper (fast, accurate, FREE — returns individual listings from Google)
+async function searchListings({ maxResults = 100 } = {}) {
   const serperResults = await searchWithSerper(maxResults);
 
-  // Only use Firecrawl search (costs credits!) if Serper found very few results
   let fcResults = [];
-  if (serperResults.length < 5) {
-    console.log('Serper found few results, supplementing with Firecrawl search...');
+  if (serperResults.length < 15) {
+    console.log('Serper found few new results, supplementing with Firecrawl search...');
     fcResults = await searchWithFirecrawl(maxResults - serperResults.length);
   }
 
-  // Google CSE only if configured (free, no credits)
-  const cseResults = await searchWithGoogleCSE(10);
+  const cseResults = await searchWithGoogleCSE(20);
 
   const byUrl = new Map();
   for (const item of [...serperResults, ...fcResults, ...cseResults]) {

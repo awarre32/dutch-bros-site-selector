@@ -30,8 +30,8 @@ function normalizeUrl(url) {
  * @param {{ maxPerSource?: number, alreadyProcessed?: Set<string> }} options
  */
 async function runAllScrapers(options = {}) {
-  const maxPerSource = options.maxPerSource ?? 15;
-  const maxTotal = maxPerSource * 2;
+  const maxPerSource = options.maxPerSource ?? 30;
+  const maxTotal = Math.max(maxPerSource * 3, 100);
   const alreadyProcessed = options.alreadyProcessed || new Set();
 
   const cseListings = [];

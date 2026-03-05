@@ -20,7 +20,7 @@ const COLLECTION = 'aiQualifiedSites';
 const PROCESSED_COLLECTION = 'processedUrls';
 const METADATA_COLLECTION = 'scrapeMetadata';
 const MIN_VERDICT_TO_STORE = 'CONDITIONAL';
-const MAX_LISTINGS_PER_RUN = 20;
+const MAX_LISTINGS_PER_RUN = 50;
 const VERDICT_ORDER = { GO: 2, CONDITIONAL: 1, 'NO-GO': 0 };
 
 function normalizeUrl(url) {
@@ -182,7 +182,7 @@ async function runScrapeJob(db) {
 }
 
 exports.scheduledScrapeAndQualify = functions
-  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .pubsub.schedule('0 6 * * *')
   .timeZone('America/New_York')
   .onRun(async () => {
@@ -192,7 +192,7 @@ exports.scheduledScrapeAndQualify = functions
   });
 
 exports.runScrapeNow = functions
-  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .https.onRequest(async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method Not Allowed');
@@ -213,4 +213,37 @@ exports.runScrapeNow = functions
       console.error('runScrapeNow error', e);
       res.status(500).json({ ok: false, error: e.message });
     }
+  });
+
+exports.cleanupBadGeolocations = functions
+  .runWith({ timeoutSeconds: 120, memory: '256MB' })
+  .https.onRequest(async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).send('Method Not Allowed'); return; }
+    const { isWithinCarolinas } = require('./geocode');
+    const db = admin.firestore();
+    const snap = await db.collection(COLLECTION).get();
+    let fixed = 0, removed = 0, regeoFailed = 0;
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      const lat = d.lat, lng = d.lng;
+      if (lat != null && lng != null && !isWithinCarolinas(lat, lng)) {
+        const address = d.address || d.title || '';
+        if (address) {
+          const newGeo = await geocodeAddress(address);
+          if (newGeo.lat != null && newGeo.lng != null) {
+            await doc.ref.update({ lat: newGeo.lat, lng: newGeo.lng });
+            console.log(`Re-geocoded "${address}": ${lat},${lng} -> ${newGeo.lat},${newGeo.lng}`);
+            fixed++;
+          } else {
+            await doc.ref.update({ lat: null, lng: null });
+            console.log(`Nulled bad coords for "${address}" (re-geocode failed)`);
+            regeoFailed++;
+          }
+        } else {
+          await doc.ref.update({ lat: null, lng: null });
+          removed++;
+        }
+      }
+    }
+    res.json({ ok: true, total: snap.size, fixed, nulled: regeoFailed, removedNoAddr: removed });
   });

@@ -439,6 +439,7 @@ async function loadAISitesAndRender(){
         const d=doc.data();
         const lat=d.lat,lng=d.lng;
         if(lat==null||lng==null)return;
+        if(lat<32.0||lat>36.6||lng<-84.4||lng>-75.4)return;
         const n=d.title||d.address||'AI site';
         const a=d.address||'';
         const m=d.market||null;
