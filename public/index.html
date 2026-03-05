@@ -8,36 +8,37 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f0f2f5;color:#1a1a1a}
 #map{width:100%;height:100vh}
-.panel{position:absolute;top:10px;left:10px;z-index:1000;background:#fff;border:1px solid #dee2e6;border-radius:12px;width:400px;max-height:calc(100vh - 20px);overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.1)}
-.panel-header{padding:16px 18px;border-bottom:1px solid #dee2e6;background:linear-gradient(135deg,#1e56a0,#2563eb);border-radius:12px 12px 0 0;position:sticky;top:0;z-index:10}
-.panel-header h1{font-size:16px;font-weight:700;color:#fff;margin-bottom:3px}
-.panel-header p{font-size:11px;color:rgba(255,255,255,.9)}
-.section{padding:12px 16px;border-bottom:1px solid #e9ecef}
-.section h2{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#6c757d;margin-bottom:8px}
-.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:6px}
-.stat-card{background:#f8f9fa;border-radius:6px;padding:8px 4px;text-align:center;border:1px solid #e9ecef}
-.stat-card .num{font-size:18px;font-weight:700;color:#1e56a0}
-.stat-card .label{font-size:9px;color:#6c757d;margin-top:1px}
-.filter-btn{display:inline-block;padding:4px 9px;font-size:11px;border:1px solid #dee2e6;border-radius:5px;cursor:pointer;background:#f8f9fa;color:#495057;margin:2px;transition:all .2s}
-.filter-btn:hover{border-color:#1e56a0;color:#1a1a1a}
+.panel{position:absolute;top:10px;left:10px;z-index:1000;background:#fff;border:none;border-radius:14px;width:420px;max-height:calc(100vh - 20px);overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.panel-header{padding:18px 20px;border-bottom:1px solid #e9ecef;background:linear-gradient(135deg,#0f3d7a,#1e56a0);border-radius:14px 14px 0 0;position:sticky;top:0;z-index:10}
+.panel-header h1{font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;letter-spacing:.2px}
+.panel-header p{font-size:12px;color:rgba(255,255,255,.85)}
+.section{padding:14px 18px;border-bottom:1px solid #e9ecef}
+.section h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#8c959f;margin-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px}
+.stat-card{background:#f8f9fa;border-radius:8px;padding:10px 6px;text-align:center;border:1px solid #e9ecef;transition:box-shadow .2s}
+.stat-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.stat-card .num{font-size:20px;font-weight:800;color:#1e56a0}
+.stat-card .label{font-size:10px;color:#6c757d;margin-top:2px;font-weight:500}
+.filter-btn{display:inline-block;padding:6px 12px;font-size:12px;border:1px solid #dee2e6;border-radius:6px;cursor:pointer;background:#f8f9fa;color:#495057;margin:2px;transition:all .2s;font-weight:500}
+.filter-btn:hover{border-color:#1e56a0;color:#1a1a1a;background:#eef2ff}
 .filter-btn.active{background:#1e56a0;border-color:#1e56a0;color:#fff}
-.market-btn{padding:5px 9px;border-radius:5px;border:1px solid #dee2e6;background:#f8f9fa;color:#495057;cursor:pointer;font-size:11px;font-weight:500;transition:all .2s;text-align:center}
-.market-btn:hover{border-color:#1e56a0;color:#1a1a1a}
+.market-btn{padding:6px 11px;border-radius:6px;border:1px solid #dee2e6;background:#f8f9fa;color:#495057;cursor:pointer;font-size:12px;font-weight:600;transition:all .2s;text-align:center}
+.market-btn:hover{border-color:#1e56a0;color:#1a1a1a;background:#eef2ff}
 .market-btn.active{background:#1e56a0;border-color:#1e56a0;color:#fff}
-.controls-row{display:flex;gap:5px;flex-wrap:wrap}
-.search-box{width:100%;padding:7px 10px;background:#fff;border:1px solid #dee2e6;border-radius:5px;color:#1a1a1a;font-size:12px;outline:none;margin-bottom:6px}
-.search-box::placeholder{color:#6c757d}
-.search-box:focus{border-color:#1e56a0}
-.location-list{max-height:300px;overflow-y:auto}
-.loc-item{padding:6px 0;border-bottom:1px solid #e9ecef;font-size:11px;cursor:pointer;transition:background .15s}
-.loc-item:hover{background:#f8f9fa;margin:0 -16px;padding:6px 16px}
-.loc-item .loc-name{font-weight:600;color:#1a1a1a}
-.loc-item .loc-addr{color:#6c757d;margin-top:1px;font-size:10px}
-.loc-item .loc-meta{font-size:10px;margin-top:2px;color:#6c757d}
-.loc-item .loc-meta span{margin-right:8px}
-.loc-item .loc-link{font-size:10px;color:#1e56a0;text-decoration:none;margin-top:2px;display:inline-block}
+.controls-row{display:flex;gap:6px;flex-wrap:wrap}
+.search-box{width:100%;padding:9px 12px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;color:#1a1a1a;font-size:13px;outline:none;margin-bottom:8px;transition:all .2s}
+.search-box::placeholder{color:#adb5bd}
+.search-box:focus{border-color:#1e56a0;background:#fff;box-shadow:0 0 0 3px rgba(30,86,160,.08)}
+.location-list{max-height:340px;overflow-y:auto}
+.loc-item{padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:12px;cursor:pointer;transition:background .15s}
+.loc-item:hover{background:#f8f9fa;margin:0 -18px;padding:10px 18px}
+.loc-item .loc-name{font-weight:700;color:#1a1a1a;font-size:13px}
+.loc-item .loc-addr{color:#6c757d;margin-top:2px;font-size:11px}
+.loc-item .loc-meta{font-size:11px;margin-top:4px;color:#6c757d;line-height:1.5}
+.loc-item .loc-meta span{margin-right:10px}
+.loc-item .loc-link{font-size:11px;color:#1e56a0;text-decoration:none;margin-top:4px;display:inline-block;font-weight:600}
 .loc-item .loc-link:hover{text-decoration:underline}
 .status-open{color:#198754} .status-conversion{color:#fd7e14} .status-planned{color:#6f42c1} .status-site{color:#e8590c} .status-ai-site{color:#1e56a0} .status-opportunity{color:#dc3545}
 .gm-info-window b{color:#1e56a0}
@@ -50,8 +51,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1
 .spec-chip{padding:3px 7px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;font-size:9px;color:#6c757d}
 .spec-chip b{color:#1e56a0}
 /* Tabs */
-.tab-bar{display:flex;border-bottom:1px solid #dee2e6;position:sticky;top:62px;z-index:9;background:#fff}
-.tab-btn{flex:1;padding:10px 8px;font-size:11px;font-weight:600;text-align:center;cursor:pointer;color:#6c757d;background:transparent;border:none;border-bottom:2px solid transparent;transition:all .2s}
+.tab-bar{display:flex;border-bottom:2px solid #e9ecef;position:sticky;top:64px;z-index:9;background:#fff}
+.tab-btn{flex:1;padding:12px 8px;font-size:12px;font-weight:700;text-align:center;cursor:pointer;color:#8c959f;background:transparent;border:none;border-bottom:2px solid transparent;transition:all .2s;letter-spacing:.2px}
 .tab-btn:hover{color:#1a1a1a}
 .tab-btn.active{color:#1e56a0;border-bottom-color:#1e56a0;background:#f8f9fa}
 .tab-content{display:none}
@@ -63,10 +64,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1
 .section-a h3{background:#d1e7dd;color:#198754;border:1px solid #badbcc}
 .section-b h3{background:#cfe2ff;color:#1e56a0;border:1px solid #9ec5fe}
 .section-c h3{background:#e2d9f3;color:#6f42c1;border:1px solid #c9b8e0}
-.screener-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e9ecef;font-size:11px}
-.screener-row label{flex:1;color:#495057;min-width:0}
-.screener-row input,.screener-row select{background:#fff;border:1px solid #dee2e6;border-radius:4px;color:#1a1a1a;padding:4px 8px;font-size:11px;width:120px;outline:none}
-.screener-row input:focus,.screener-row select:focus{border-color:#1e56a0}
+.screener-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.screener-row label{flex:1;color:#495057;min-width:0;font-weight:500}
+.screener-row input,.screener-row select{background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;color:#1a1a1a;padding:6px 10px;font-size:12px;width:130px;outline:none;transition:all .2s}
+.screener-row input:focus,.screener-row select:focus{border-color:#1e56a0;background:#fff;box-shadow:0 0 0 2px rgba(30,86,160,.08)}
 .pass-badge{padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;min-width:45px;text-align:center}
 .pass-yes{background:#d1e7dd;color:#198754}
 .pass-no{background:#f8d7da;color:#dc3545}
@@ -93,7 +94,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1
 .improve-item p{color:#6c757d;line-height:1.5}
 .improve-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;margin-right:4px;margin-bottom:4px}
 .improve-high{background:#f8d7da;color:#dc3545}.improve-med{background:#fff3cd;color:#856404}.improve-low{background:#cfe2ff;color:#1e56a0}
-@media(max-width:768px){.panel{width:calc(100% - 20px);max-height:45vh;bottom:10px;top:auto}}
+@media(max-width:768px){.panel{width:calc(100% - 16px);max-height:50vh;bottom:8px;top:auto;left:8px;border-radius:12px}}
 </style>
 </head>
 <body>
@@ -143,8 +144,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1
         <div class="stat-card"><div class="num" id="s-open">0</div><div class="label">Open</div></div>
         <div class="stat-card"><div class="num" id="s-conv">0</div><div class="label">Converting</div></div>
         <div class="stat-card"><div class="num" id="s-plan">0</div><div class="label">Planned</div></div>
-        <div class="stat-card"><div class="num" id="s-site">0</div><div class="label">Target Sites</div></div>
-        <div class="stat-card"><div class="num" id="s-ai">0</div><div class="label">AI Qualified</div></div>
+        <div class="stat-card"><div class="num" id="s-site">0</div><div class="label">Retail Nodes</div></div>
+        <div class="stat-card"><div class="num" id="s-ai">0</div><div class="label">AI Picks</div></div>
       </div>
     </div>
     <div class="section">
@@ -154,12 +155,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f5f5f5;color:#1a1a1
         <button class="filter-btn" data-filter="open" onclick="toggleFilter('open')"><span style="color:#3fb950">&#9679;</span> Open</button>
         <button class="filter-btn" data-filter="conversion" onclick="toggleFilter('conversion')"><span style="color:#d29922">&#9679;</span> Converting</button>
         <button class="filter-btn" data-filter="planned" onclick="toggleFilter('planned')"><span style="color:#a371f7">&#9679;</span> Planned</button>
-        <button class="filter-btn" data-filter="site" onclick="toggleFilter('site')"><span style="color:#f0883e">&#9679;</span> Target Sites</button>
-        <button class="filter-btn" data-filter="ai-site" onclick="toggleFilter('ai-site')"><span style="color:#58a6ff">&#9679;</span> AI Qualified</button>
+        <button class="filter-btn" data-filter="site" onclick="toggleFilter('site')"><span style="color:#f0883e">&#9679;</span> Target Retail Nodes</button>
+        <button class="filter-btn" data-filter="ai-site" onclick="toggleFilter('ai-site')"><span style="color:#58a6ff">&#9679;</span> AI Recommended</button>
       </div>
-      <div class="section" id="ai-scrape-meta" style="display:none">
-        <h2>AI pipeline</h2>
-        <p id="last-scraped" style="font-size:11px;color:#6c757d"></p>
+      <div class="section" id="ai-scrape-meta" style="display:none;border-top:none;padding-top:8px">
+        <h2>AI Discovery</h2>
+        <p id="last-scraped" style="font-size:11px;color:#8c959f"></p>
       </div>
     </div>
     <div class="section">
@@ -415,7 +416,7 @@ L_({n:"Hwy 321 - Hickory",a:"Highway 321, Hickory, NC",lat:35.7380,lng:-81.3150,
 
 // ═══ Colors & Config ═══
 const colors={open:'#3fb950',conversion:'#d29922',planned:'#a371f7',site:'#f0883e','ai-site':'#58a6ff'};
-const labels={open:'Open',conversion:'Clutch Conversion',planned:'Planned / Dev',site:'Target Site','ai-site':'AI Qualified'};
+const labels={open:'Open',conversion:'Clutch Conversion',planned:'Planned / Dev',site:'Target Retail Node','ai-site':'AI Recommended'};
 const mktNames={clt:'Charlotte',rdu:'Raleigh-Durham',triad:'Triad',chs:'Charleston',gsp:'Greenville-Spartanburg',col:'Columbia',coast:'Coastal',fay:'Fayetteville',wnc:'Mountains'};
 const mktViews={all:{c:[34.3,-80],z:7},clt:{c:[35.22,-80.84],z:10},rdu:{c:[35.83,-78.7],z:10},triad:{c:[36.06,-80.1],z:10},chs:{c:[32.9,-80],z:10},gsp:{c:[34.85,-82.3],z:10},col:{c:[34,-81.05],z:10},coast:{c:[33.7,-79],z:8},wnc:{c:[35.55,-82],z:10},fay:{c:[35.06,-78.97],z:11}};
 
@@ -425,9 +426,12 @@ function buildInfoContent(loc){
   if(loc.acres)tags+='<span class="tag tag-acres">'+loc.acres+' ac</span>';
   if(loc.anchor)tags+='<span class="tag tag-anchor">'+loc.anchor+'</span>';
   if(loc.price)tags+='<span class="tag tag-price">'+loc.price+'</span>';
-  var urlLink=loc.url?'<br><a href="'+loc.url+'" target="_blank" style="color:#58a6ff;font-size:11px">View Listing &rarr;</a>':'';
-  var dirLink='<br><a href="https://www.google.com/maps/dir/?api=1&destination='+loc.lat+','+loc.lng+'" target="_blank" style="color:#58a6ff;font-size:11px">Get directions</a>';
-  return '<div class="gm-info-window" style="font-size:12px;line-height:1.5;min-width:260px;max-width:340px;color:#1a1a1a"><b>'+loc.n+'</b><br><span style="color:#6c757d">'+loc.a+'</span><br>'+(tags?'<div style="margin:6px 0">'+tags+'</div>':'')+'<span style="color:'+(colors[loc.s]||colors.site)+';font-weight:600">'+(labels[loc.s]||loc.s)+'</span> <span style="color:#6c757d">&bull; '+(mktNames[loc.m]||loc.m)+'</span><br>'+loc.d+urlLink+dirLink+'</div>';
+  var urlLink=loc.url?'<br><a href="'+loc.url+'" target="_blank" style="color:#1e56a0;font-size:11px;font-weight:600">View Listing &rarr;</a>':'';
+  var dirLink='<a href="https://www.google.com/maps/dir/?api=1&destination='+loc.lat+','+loc.lng+'" target="_blank" style="color:#1e56a0;font-size:11px;margin-left:12px">Directions</a>';
+  var badge='<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:'+(colors[loc.s]||colors.site)+'22;color:'+(colors[loc.s]||colors.site)+'">'+(labels[loc.s]||loc.s)+'</span>';
+  var mkt=loc.m?'<span style="color:#8c959f;font-size:11px;margin-left:6px">'+(mktNames[loc.m]||loc.m)+'</span>':'';
+  var desc='<div style="margin-top:6px;font-size:12px;line-height:1.6;color:#495057">'+loc.d+'</div>';
+  return '<div class="gm-info-window" style="font-size:13px;line-height:1.5;min-width:280px;max-width:360px;color:#1a1a1a"><div style="font-size:14px;font-weight:700;margin-bottom:2px">'+loc.n+'</div><div style="color:#8c959f;font-size:11px;margin-bottom:6px">'+loc.a+'</div>'+(tags?'<div style="margin:6px 0">'+tags+'</div>':'')+'<div style="margin:6px 0">'+badge+mkt+'</div>'+desc+'<div style="margin-top:8px">'+urlLink+dirLink+'</div></div>';
 }
 
 async function loadAISitesAndRender(){
@@ -447,10 +451,16 @@ async function loadAISitesAndRender(){
         const acres=d.extracted&&d.extracted.siteAreaAcres!=null?String(d.extracted.siteAreaAcres):null;
         const anchor=d.extracted&&d.extracted.cotenancy!=null?('Score '+d.extracted.cotenancy):null;
         const price=d.extracted&&d.extracted.landPrice!=null?'$'+Number(d.extracted.landPrice).toLocaleString():null;
-        const verdict=d.verdict||'';
-        const dsc=(d.criteriaResult&&d.criteriaResult.yoc!=null)?('YOC '+d.criteriaResult.yoc.toFixed(1)+'%'):'';
-        let desc=verdict?verdict+' — '+dsc:dsc;
-        if(d.incompleteData===true||(verdict==='CONDITIONAL'&&d.dataCompleteness!=null&&d.dataCompleteness<0.6)) desc+=' — Incomplete data, verify in screener';
+        var desc=d.aiSummary||'';
+        if(!desc){
+          var parts=[];
+          var cr=d.criteriaResult||{};
+          if(cr.sectionAPass!=null&&cr.sectionAPresent>0) parts.push(cr.sectionAPass+'/'+cr.sectionAPresent+' site criteria pass');
+          if(cr.sectionBTotal>0) parts.push('Market score '+cr.sectionBTotal+'/40');
+          if(d.extracted&&d.extracted.landPrice!=null) parts.push('Land $'+Number(d.extracted.landPrice).toLocaleString());
+          if(parts.length) desc=parts.join(' · ');
+          else desc='AI-discovered listing — open for review';
+        }
         locations.push({n,a,lat,lng,s:'ai-site',m,vpd,acres,anchor,price,d:desc,url:d.url||null});
       });
       const metaSnap=await db.collection('scrapeMetadata').doc('lastRun').get();

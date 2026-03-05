@@ -13,6 +13,7 @@ const { extractListing } = require('./ai/extractListing');
 const { recommendPartialListing } = require('./ai/recommendPartialListing');
 const { runDutchBrosCriteria } = require('./criteria/dutchBrosCriteria');
 const { geocodeAddress } = require('./geocode');
+const { summarizeSite } = require('./ai/summarizeSite');
 
 admin.initializeApp();
 
@@ -108,6 +109,19 @@ async function processOneListing(listing, db) {
   const { lat, lng } = await geocodeAddress(address);
   const docId = docIdFromUrl(url);
   const incompleteData = criteriaResult.incompleteData === true || aiOverride;
+
+  let aiSummary = null;
+  try {
+    aiSummary = await summarizeSite({
+      extracted,
+      criteriaResult: criteriaResult.criteriaResult,
+      title: title || extracted.address,
+      address,
+    });
+  } catch (e) {
+    console.warn('AI summary failed for', url, e.message);
+  }
+
   const payload = {
     url,
     source: source || 'unknown',
@@ -125,6 +139,7 @@ async function processOneListing(listing, db) {
     aiOverride: aiOverride || undefined,
     dataCompleteness: criteriaResult.dataCompleteness,
     rawSnippet: snippet ? snippet.slice(0, 2000) : null,
+    aiSummary: aiSummary || null,
   };
   await db.collection(COLLECTION).doc(docId).set(payload, { merge: true });
   return { stored: true, verdict, docId };
@@ -206,6 +221,29 @@ exports.runScrapeNow = functions
     }
 
     const db = admin.firestore();
+    const action = req.query?.action || req.body?.action || 'scrape';
+
+    if (action === 'summarize') {
+      const snap = await db.collection(COLLECTION).get();
+      let updated = 0, failed = 0;
+      for (const doc of snap.docs) {
+        const d = doc.data();
+        if (d.aiSummary && !req.body?.force) { updated++; continue; }
+        try {
+          const summary = await summarizeSite({
+            extracted: d.extracted || {},
+            criteriaResult: d.criteriaResult || {},
+            title: d.title,
+            address: d.address,
+          });
+          if (summary) { await doc.ref.update({ aiSummary: summary }); updated++; }
+          else { failed++; }
+        } catch (e) { failed++; }
+      }
+      res.json({ ok: true, action: 'summarize', total: snap.size, updated, failed });
+      return;
+    }
+
     try {
       const result = await runScrapeJob(db);
       res.json(result);
@@ -247,3 +285,4 @@ exports.cleanupBadGeolocations = functions
     }
     res.json({ ok: true, total: snap.size, fixed, nulled: regeoFailed, removedNoAddr: removed });
   });
+
